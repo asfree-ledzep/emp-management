@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.StatsMapper">
+
+    <!-- 부서별 급여 통계: 평균, 최고, 최저 급여 및 사원 수 -->
+    <select id="findSalaryStats" resultType="com.example.emp.model.SalaryStatDto">
+        SELECT
+            DEPTNO                    AS deptno,
+            ROUND(AVG(SAL), 2)        AS avgSal,
+            MAX(SAL)                  AS maxSal,
+            MIN(SAL)                  AS minSal,
+            COUNT(*)                  AS empCount
+          FROM EMP
+         WHERE SAL IS NOT NULL
+         GROUP BY DEPTNO
+         ORDER BY DEPTNO
+    </select>
+
+</mapper>
