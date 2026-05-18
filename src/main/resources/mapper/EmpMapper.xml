@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.EmpMapper">
+
+    <resultMap id="empResultMap" type="Emp">
+        <id     property="empno"    column="EMPNO"/>
+        <result property="ename"    column="ENAME"/>
+        <result property="job"      column="JOB"/>
+        <result property="mgr"      column="MGR"/>
+        <result property="hiredate" column="HIREDATE"/>
+        <result property="sal"      column="SAL"/>
+        <result property="comm"     column="COMM"/>
+        <result property="deptno"   column="DEPTNO"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="empResultMap">
+        SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO
+          FROM EMP
+         ORDER BY EMPNO
+    </select>
+
+    <select id="findById" parameterType="int" resultMap="empResultMap">
+        SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO
+          FROM EMP
+         WHERE EMPNO = #{empno}
+    </select>
+
+    <insert id="insert" parameterType="Emp">
+        INSERT INTO EMP (EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO)
+        VALUES (#{empno}, #{ename}, #{job}, #{mgr}, #{hiredate}, #{sal}, #{comm}, #{deptno})
+    </insert>
+
+    <update id="update" parameterType="Emp">
+        UPDATE EMP
+           SET ENAME    = #{ename},
+               JOB      = #{job},
+               MGR      = #{mgr},
+               HIREDATE = #{hiredate},
+               SAL      = #{sal},
+               COMM     = #{comm},
+               DEPTNO   = #{deptno}
+         WHERE EMPNO = #{empno}
+    </update>
+
+    <delete id="delete" parameterType="int">
+        DELETE FROM EMP
+         WHERE EMPNO = #{empno}
+    </delete>
+
+    <select id="findByDeptno" parameterType="int" resultMap="empResultMap">
+        SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO
+          FROM EMP
+         WHERE DEPTNO = #{deptno}
+         ORDER BY EMPNO
+    </select>
+
+</mapper>
