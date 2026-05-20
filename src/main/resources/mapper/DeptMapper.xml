@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.DeptMapper">
+
+    <resultMap id="deptResultMap" type="com.example.emp.model.Dept">
+        <id     property="deptno" column="DEPTNO"/>
+        <result property="dname"  column="DNAME"/>
+        <result property="loc"    column="LOC"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="deptResultMap">
+        SELECT DEPTNO, DNAME, LOC
+          FROM DEPT
+         ORDER BY DEPTNO
+    </select>
+
+    <select id="findById" parameterType="int" resultMap="deptResultMap">
+        SELECT DEPTNO, DNAME, LOC
+          FROM DEPT
+         WHERE DEPTNO = #{deptno}
+    </select>
+
+    <insert id="insert" parameterType="com.example.emp.model.Dept">
+        INSERT INTO DEPT (DEPTNO, DNAME, LOC)
+        VALUES (#{deptno}, #{dname}, #{loc})
+    </insert>
+
+    <update id="update" parameterType="com.example.emp.model.Dept">
+        UPDATE DEPT
+           SET DNAME = #{dname},
+               LOC   = #{loc}
+         WHERE DEPTNO = #{deptno}
+    </update>
+
+    <delete id="delete" parameterType="int">
+        DELETE FROM DEPT
+         WHERE DEPTNO = #{deptno}
+    </delete>
+
+</mapper>
