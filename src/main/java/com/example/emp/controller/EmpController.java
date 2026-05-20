@@ -5,6 +5,8 @@ import com.example.emp.service.EmpService;
 import com.example.emp.service.ExcelService;
 import com.example.emp.service.S3Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -41,9 +43,14 @@ public class EmpController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> create(@RequestBody Emp emp) {
-        empService.create(emp);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> create(@RequestBody Emp emp) {
+        try {
+            empService.create(emp);
+            return ResponseEntity.ok().build();
+        } catch (DuplicateKeyException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message", "이미 사용 중인 사번입니다. 다른 사번을 입력해 주세요."));
+        }
     }
 
     @PutMapping("/{empno}")
