@@ -77,6 +77,13 @@
             <artifactId>s3</artifactId>
         </dependency>
 
+        <!-- Apache POI (Excel 생성) -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

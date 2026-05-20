@@ -30,18 +30,18 @@
 
     <insert id="insert" parameterType="Emp">
         INSERT INTO EMP (EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO)
-        VALUES (#{empno}, #{ename}, #{job}, #{mgr}, #{hiredate}, #{sal}, #{comm}, #{deptno})
+        VALUES (#{empno}, #{ename,jdbcType=VARCHAR}, #{job,jdbcType=VARCHAR}, #{mgr,jdbcType=INTEGER}, #{hiredate,jdbcType=DATE}, #{sal,jdbcType=DECIMAL}, #{comm,jdbcType=DECIMAL}, #{deptno,jdbcType=INTEGER})
     </insert>
 
     <update id="update" parameterType="Emp">
         UPDATE EMP
-           SET ENAME    = #{ename},
-               JOB      = #{job},
-               MGR      = #{mgr},
-               HIREDATE = #{hiredate},
-               SAL      = #{sal},
-               COMM     = #{comm},
-               DEPTNO   = #{deptno}
+           SET ENAME    = #{ename,jdbcType=VARCHAR},
+               JOB      = #{job,jdbcType=VARCHAR},
+               MGR      = #{mgr,jdbcType=INTEGER},
+               HIREDATE = #{hiredate,jdbcType=DATE},
+               SAL      = #{sal,jdbcType=DECIMAL},
+               COMM     = #{comm,jdbcType=DECIMAL},
+               DEPTNO   = #{deptno,jdbcType=INTEGER}
          WHERE EMPNO = #{empno}
     </update>
 

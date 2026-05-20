@@ -2,6 +2,7 @@ package com.example.emp.controller;
 
 import com.example.emp.model.Emp;
 import com.example.emp.service.EmpService;
+import com.example.emp.service.ExcelService;
 import com.example.emp.service.S3Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,9 @@ public class EmpController {
 
     @Autowired
     private S3Service s3Service;
+
+    @Autowired
+    private ExcelService excelService;
 
     @GetMapping
     public ResponseEntity<List<Emp>> getAll() {
@@ -59,6 +63,16 @@ public class EmpController {
     @GetMapping("/dept/{deptno}")
     public ResponseEntity<List<Emp>> getByDeptno(@PathVariable Integer deptno) {
         return ResponseEntity.ok(empService.getByDeptno(deptno));
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<Map<String, String>> exportExcel() {
+        try {
+            String url = excelService.exportToS3();
+            return ResponseEntity.ok(Map.of("url", url));
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @PostMapping("/{empno}/photo")
