@@ -2,11 +2,15 @@ package com.example.emp.controller;
 
 import com.example.emp.model.Emp;
 import com.example.emp.service.EmpService;
+import com.example.emp.service.S3Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/emps")
@@ -14,6 +18,9 @@ public class EmpController {
 
     @Autowired
     private EmpService empService;
+
+    @Autowired
+    private S3Service s3Service;
 
     @GetMapping
     public ResponseEntity<List<Emp>> getAll() {
@@ -52,5 +59,18 @@ public class EmpController {
     @GetMapping("/dept/{deptno}")
     public ResponseEntity<List<Emp>> getByDeptno(@PathVariable Integer deptno) {
         return ResponseEntity.ok(empService.getByDeptno(deptno));
+    }
+
+    @PostMapping("/{empno}/photo")
+    public ResponseEntity<Map<String, String>> uploadPhoto(
+            @PathVariable Integer empno,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            String url = s3Service.uploadPhoto(empno, file);
+            empService.updatePhotoUrl(empno, url);
+            return ResponseEntity.ok(Map.of("photoUrl", url));
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }

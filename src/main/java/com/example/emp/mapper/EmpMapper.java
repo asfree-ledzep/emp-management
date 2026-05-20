@@ -2,6 +2,7 @@ package com.example.emp.mapper;
 
 import com.example.emp.model.Emp;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -19,4 +20,6 @@ public interface EmpMapper {
     int delete(Integer empno);
 
     List<Emp> findByDeptno(Integer deptno);
+
+    int updatePhotoUrl(@Param("empno") Integer empno, @Param("photoUrl") String photoUrl);
 }

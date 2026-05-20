@@ -41,4 +41,9 @@ public class EmpService {
     public List<Emp> getByDeptno(Integer deptno) {
         return empMapper.findByDeptno(deptno);
     }
+
+    @Transactional
+    public void updatePhotoUrl(Integer empno, String photoUrl) {
+        empMapper.updatePhotoUrl(empno, photoUrl);
+    }
 }

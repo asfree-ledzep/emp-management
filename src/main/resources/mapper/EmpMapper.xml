@@ -13,16 +13,17 @@
         <result property="sal"      column="SAL"/>
         <result property="comm"     column="COMM"/>
         <result property="deptno"   column="DEPTNO"/>
+        <result property="photoUrl" column="PHOTO_URL"/>
     </resultMap>
 
     <select id="findAll" resultMap="empResultMap">
-        SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO
+        SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO, PHOTO_URL
           FROM EMP
          ORDER BY EMPNO
     </select>
 
     <select id="findById" parameterType="int" resultMap="empResultMap">
-        SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO
+        SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO, PHOTO_URL
           FROM EMP
          WHERE EMPNO = #{empno}
     </select>
@@ -50,10 +51,16 @@
     </delete>
 
     <select id="findByDeptno" parameterType="int" resultMap="empResultMap">
-        SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO
+        SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO, PHOTO_URL
           FROM EMP
          WHERE DEPTNO = #{deptno}
          ORDER BY EMPNO
     </select>
+
+    <update id="updatePhotoUrl">
+        UPDATE EMP
+           SET PHOTO_URL = #{photoUrl}
+         WHERE EMPNO = #{empno}
+    </update>
 
 </mapper>
