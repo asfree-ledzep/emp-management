@@ -15,6 +15,9 @@ public class EmpService {
     @Autowired
     private EmpMapper empMapper;
 
+    @Autowired
+    private EmailService emailService;
+
     public List<Emp> getAll() {
         return empMapper.findAll();
     }
@@ -26,6 +29,7 @@ public class EmpService {
     @Transactional
     public void create(Emp emp) {
         empMapper.insert(emp);
+        emailService.sendCreateNotification(emp.getEmpno(), emp.getEname());
     }
 
     @Transactional
@@ -35,7 +39,11 @@ public class EmpService {
 
     @Transactional
     public void delete(Integer empno) {
+        Emp emp = empMapper.findById(empno);
         empMapper.delete(empno);
+        if (emp != null) {
+            emailService.sendDeleteNotification(empno, emp.getEname());
+        }
     }
 
     public List<Emp> getByDeptno(Integer deptno) {

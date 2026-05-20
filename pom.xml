@@ -77,6 +77,12 @@
             <artifactId>s3</artifactId>
         </dependency>
 
+        <!-- AWS SES v2 (이메일 알림) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sesv2</artifactId>
+        </dependency>
+
         <!-- Apache POI (Excel 생성) -->
         <dependency>
             <groupId>org.apache.poi</groupId>
