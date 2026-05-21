@@ -22,4 +22,7 @@ public interface EmpMapper {
     List<Emp> findByDeptno(Integer deptno);
 
     int updatePhotoUrl(@Param("empno") Integer empno, @Param("photoUrl") String photoUrl);
+
+    // 오늘이 입사 기념일인 사원 목록
+    List<Emp> findHiredToday();
 }

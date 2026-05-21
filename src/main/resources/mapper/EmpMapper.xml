@@ -57,6 +57,14 @@
          ORDER BY EMPNO
     </select>
 
+    <!-- 오늘이 입사 기념일인 사원 (월/일 일치, 당해연도 제외) -->
+    <select id="findHiredToday" resultMap="empResultMap">
+        SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO, PHOTO_URL
+          FROM EMP
+         WHERE TO_CHAR(HIREDATE, 'MMDD') = TO_CHAR(SYSDATE, 'MMDD')
+           AND TO_CHAR(HIREDATE, 'YYYY') &lt; TO_CHAR(SYSDATE, 'YYYY')
+    </select>
+
     <update id="updatePhotoUrl">
         UPDATE EMP
            SET PHOTO_URL = #{photoUrl}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.PushSubscriptionMapper">
+
+    <select id="findAll" resultType="com.example.emp.model.PushSubscription">
+        SELECT ENDPOINT, P256DH, AUTH
+          FROM PUSH_SUBSCRIPTIONS
+    </select>
+
+    <insert id="upsert" parameterType="com.example.emp.model.PushSubscription">
+        MERGE INTO PUSH_SUBSCRIPTIONS ps
+        USING DUAL
+           ON (ps.ENDPOINT = #{endpoint})
+        WHEN MATCHED THEN
+            UPDATE SET ps.P256DH = #{p256dh}, ps.AUTH = #{auth}
+        WHEN NOT MATCHED THEN
+            INSERT (ENDPOINT, P256DH, AUTH)
+            VALUES (#{endpoint}, #{p256dh}, #{auth})
+    </insert>
+
+    <delete id="deleteByEndpoint">
+        DELETE FROM PUSH_SUBSCRIPTIONS
+         WHERE ENDPOINT = #{endpoint}
+    </delete>
+
+</mapper>
