@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,31 +21,49 @@ import java.util.Map;
 @RequestMapping("/api/emps")
 public class EmpController {
 
-    @Autowired
-    private EmpService empService;
+    @Autowired private EmpService   empService;
+    @Autowired private S3Service    s3Service;
+    @Autowired private ExcelService excelService;
 
-    @Autowired
-    private S3Service s3Service;
+    // ── 권한 헬퍼 ──────────────────────────────────────────────
+    private boolean isAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+    }
 
-    @Autowired
-    private ExcelService excelService;
+    /** 로그인된 사원의 사번 (USER 역할일 때만 유효) */
+    private Integer loginEmpno() {
+        try {
+            return Integer.parseInt(
+                    SecurityContextHolder.getContext().getAuthentication().getName());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 
+    // ── 전체 조회: 관리자만 ─────────────────────────────────────
     @GetMapping
-    public ResponseEntity<List<Emp>> getAll() {
+    public ResponseEntity<?> getAll() {
+        if (!isAdmin()) return ResponseEntity.status(403).build();
         return ResponseEntity.ok(empService.getAll());
     }
 
+    // ── 단건 조회: 관리자 or 본인 ───────────────────────────────
     @GetMapping("/{empno}")
     public ResponseEntity<Emp> getById(@PathVariable Integer empno) {
-        Emp emp = empService.getById(empno);
-        if (emp == null) {
-            return ResponseEntity.notFound().build();
+        if (!isAdmin() && !empno.equals(loginEmpno())) {
+            return ResponseEntity.status(403).build();
         }
+        Emp emp = empService.getById(empno);
+        if (emp == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(emp);
     }
 
+    // ── 등록: 관리자만 ─────────────────────────────────────────
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Emp emp) {
+        if (!isAdmin()) return ResponseEntity.status(403).build();
         try {
             empService.create(emp);
             return ResponseEntity.ok().build();
@@ -53,27 +73,37 @@ public class EmpController {
         }
     }
 
+    // ── 수정: 관리자 or 본인 ────────────────────────────────────
     @PutMapping("/{empno}")
     public ResponseEntity<Void> update(@PathVariable Integer empno,
                                        @RequestBody Emp emp) {
+        if (!isAdmin() && !empno.equals(loginEmpno())) {
+            return ResponseEntity.status(403).build();
+        }
         emp.setEmpno(empno);
         empService.update(emp);
         return ResponseEntity.ok().build();
     }
 
+    // ── 삭제: 관리자만 ─────────────────────────────────────────
     @DeleteMapping("/{empno}")
     public ResponseEntity<Void> delete(@PathVariable Integer empno) {
+        if (!isAdmin()) return ResponseEntity.status(403).build();
         empService.delete(empno);
         return ResponseEntity.ok().build();
     }
 
+    // ── 부서별 조회: 관리자만 ───────────────────────────────────
     @GetMapping("/dept/{deptno}")
     public ResponseEntity<List<Emp>> getByDeptno(@PathVariable Integer deptno) {
+        if (!isAdmin()) return ResponseEntity.status(403).build();
         return ResponseEntity.ok(empService.getByDeptno(deptno));
     }
 
+    // ── 엑셀 내보내기: 관리자만 ─────────────────────────────────
     @GetMapping("/export")
     public ResponseEntity<Map<String, String>> exportExcel() {
+        if (!isAdmin()) return ResponseEntity.status(403).build();
         try {
             String url = excelService.exportToS3();
             return ResponseEntity.ok(Map.of("url", url));
@@ -82,10 +112,14 @@ public class EmpController {
         }
     }
 
+    // ── 사진 업로드: 관리자 or 본인 ─────────────────────────────
     @PostMapping("/{empno}/photo")
     public ResponseEntity<Map<String, String>> uploadPhoto(
             @PathVariable Integer empno,
             @RequestParam("file") MultipartFile file) {
+        if (!isAdmin() && !empno.equals(loginEmpno())) {
+            return ResponseEntity.status(403).build();
+        }
         try {
             String url = s3Service.uploadPhoto(empno, file);
             empService.updatePhotoUrl(empno, url);

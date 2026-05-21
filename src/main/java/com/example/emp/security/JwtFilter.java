@@ -6,12 +6,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.List;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
@@ -31,10 +32,12 @@ public class JwtFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             if (jwtUtil.isValid(token)) {
                 String username = jwtUtil.extractUsername(token);
-                // 인증 객체를 SecurityContext에 등록
-                UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken(
-                                username, null, Collections.emptyList());
+                String role     = jwtUtil.extractRole(token);
+
+                // ROLE_ADMIN 또는 ROLE_USER 권한 부여
+                var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
+                var auth = new UsernamePasswordAuthenticationToken(
+                        username, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
         }

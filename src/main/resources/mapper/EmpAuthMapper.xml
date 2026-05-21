@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.EmpAuthMapper">
+
+    <select id="findByEmpno" parameterType="int" resultType="com.example.emp.model.EmpAuth">
+        SELECT EMPNO, PASSWORD, CREATED_AT
+          FROM EMP_AUTH
+         WHERE EMPNO = #{empno}
+    </select>
+
+    <!-- 비밀번호 등록 또는 갱신 -->
+    <insert id="upsert" parameterType="com.example.emp.model.EmpAuth">
+        MERGE INTO EMP_AUTH ea
+        USING DUAL
+           ON (ea.EMPNO = #{empno})
+        WHEN MATCHED THEN
+            UPDATE SET ea.PASSWORD = #{password}
+        WHEN NOT MATCHED THEN
+            INSERT (EMPNO, PASSWORD)
+            VALUES (#{empno}, #{password})
+    </insert>
+
+</mapper>
