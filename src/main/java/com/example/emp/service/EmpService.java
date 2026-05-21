@@ -22,6 +22,9 @@ public class EmpService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private S3Service s3Service;
+
     public List<Emp> getAll() {
         return empMapper.findAll();
     }
@@ -49,6 +52,10 @@ public class EmpService {
     public void delete(Integer empno) {
         Emp emp = empMapper.findById(empno);
         empMapper.delete(empno);
+        // S3 프로필 사진 삭제
+        if (emp != null && emp.getPhotoUrl() != null) {
+            s3Service.deletePhoto(emp.getPhotoUrl());
+        }
         try {
             if (emp != null) {
                 emailService.sendDeleteNotification(empno, emp.getEname());

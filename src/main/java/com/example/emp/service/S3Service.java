@@ -6,6 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
@@ -53,6 +54,19 @@ public class S3Service {
                 RequestBody.fromBytes(data)
         );
         return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
+    }
+
+    // S3 사진 삭제 (URL에서 키 추출)
+    public void deletePhoto(String photoUrl) {
+        try {
+            String key = photoUrl.substring(photoUrl.indexOf("amazonaws.com/") + "amazonaws.com/".length());
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build());
+        } catch (Exception e) {
+            // 삭제 실패해도 사원 삭제에는 영향 없음
+        }
     }
 
     private String getExtension(String filename) {
