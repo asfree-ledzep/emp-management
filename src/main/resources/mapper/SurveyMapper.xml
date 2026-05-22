@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.SurveyMapper">
+
+    <!-- 선택지 ResultMap -->
+    <resultMap id="optionResultMap" type="com.example.emp.model.SurveyOption">
+        <id     property="optionId"   column="OPTION_ID"/>
+        <result property="questionId" column="QUESTION_ID"/>
+        <result property="optionText" column="OPTION_TEXT"/>
+        <result property="orderNum"   column="ORDER_NUM"/>
+    </resultMap>
+
+    <!-- 문항 ResultMap (선택지 포함) -->
+    <resultMap id="questionResultMap" type="com.example.emp.model.SurveyQuestion">
+        <id     property="questionId"   column="QUESTION_ID"/>
+        <result property="surveyId"     column="SURVEY_ID"/>
+        <result property="questionText" column="QUESTION_TEXT"/>
+        <result property="questionType" column="QUESTION_TYPE"/>
+        <result property="orderNum"     column="ORDER_NUM"/>
+        <collection property="options" ofType="com.example.emp.model.SurveyOption"
+                    select="findOptionsByQuestionId" column="QUESTION_ID"/>
+    </resultMap>
+
+    <!-- 설문 ResultMap (문항 포함) -->
+    <resultMap id="surveyResultMap" type="com.example.emp.model.Survey">
+        <id     property="surveyId"     column="SURVEY_ID"/>
+        <result property="title"        column="TITLE"/>
+        <result property="description"  column="DESCRIPTION"/>
+        <result property="status"       column="STATUS"/>
+        <result property="createdBy"    column="CREATED_BY"/>
+        <result property="createdAt"    column="CREATED_AT"/>
+        <result property="endDate"      column="END_DATE"/>
+        <result property="responseCount" column="RESPONSE_COUNT"/>
+        <collection property="questions" ofType="com.example.emp.model.SurveyQuestion"
+                    select="findQuestionsBySurveyId" column="SURVEY_ID"/>
+    </resultMap>
+
+    <!-- 설문 목록 (문항 미포함) -->
+    <resultMap id="surveyListResultMap" type="com.example.emp.model.Survey">
+        <id     property="surveyId"     column="SURVEY_ID"/>
+        <result property="title"        column="TITLE"/>
+        <result property="description"  column="DESCRIPTION"/>
+        <result property="status"       column="STATUS"/>
+        <result property="createdBy"    column="CREATED_BY"/>
+        <result property="createdAt"    column="CREATED_AT"/>
+        <result property="endDate"      column="END_DATE"/>
+        <result property="responseCount" column="RESPONSE_COUNT"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="surveyListResultMap">
+        SELECT s.SURVEY_ID, s.TITLE, s.DESCRIPTION, s.STATUS,
+               s.CREATED_BY, s.CREATED_AT, s.END_DATE,
+               (SELECT COUNT(*) FROM SURVEY_RESPONSE r WHERE r.SURVEY_ID = s.SURVEY_ID) AS RESPONSE_COUNT
+          FROM SURVEY s
+         ORDER BY s.CREATED_AT DESC
+    </select>
+
+    <select id="findById" resultMap="surveyResultMap">
+        SELECT s.SURVEY_ID, s.TITLE, s.DESCRIPTION, s.STATUS,
+               s.CREATED_BY, s.CREATED_AT, s.END_DATE,
+               (SELECT COUNT(*) FROM SURVEY_RESPONSE r WHERE r.SURVEY_ID = s.SURVEY_ID) AS RESPONSE_COUNT
+          FROM SURVEY s
+         WHERE s.SURVEY_ID = #{surveyId}
+    </select>
+
+    <select id="findQuestionsBySurveyId" resultMap="questionResultMap">
+        SELECT QUESTION_ID, SURVEY_ID, QUESTION_TEXT, QUESTION_TYPE, ORDER_NUM
+          FROM SURVEY_QUESTION
+         WHERE SURVEY_ID = #{surveyId}
+         ORDER BY ORDER_NUM
+    </select>
+
+    <select id="findOptionsByQuestionId" resultMap="optionResultMap">
+        SELECT OPTION_ID, QUESTION_ID, OPTION_TEXT, ORDER_NUM
+          FROM SURVEY_OPTION
+         WHERE QUESTION_ID = #{questionId}
+         ORDER BY ORDER_NUM
+    </select>
+
+    <insert id="insertSurvey" parameterType="com.example.emp.model.Survey">
+        INSERT INTO SURVEY (SURVEY_ID, TITLE, DESCRIPTION, STATUS, CREATED_BY, CREATED_AT, END_DATE)
+        VALUES (SURVEY_SEQ.NEXTVAL, #{title}, #{description}, 'ACTIVE', #{createdBy}, SYSDATE, #{endDate})
+        <selectKey keyProperty="surveyId" resultType="long" order="AFTER">
+            SELECT SURVEY_SEQ.CURRVAL FROM DUAL
+        </selectKey>
+    </insert>
+
+    <insert id="insertQuestion" parameterType="com.example.emp.model.SurveyQuestion">
+        INSERT INTO SURVEY_QUESTION (QUESTION_ID, SURVEY_ID, QUESTION_TEXT, QUESTION_TYPE, ORDER_NUM)
+        VALUES (SURVEY_QUESTION_SEQ.NEXTVAL, #{surveyId}, #{questionText}, #{questionType}, #{orderNum})
+        <selectKey keyProperty="questionId" resultType="long" order="AFTER">
+            SELECT SURVEY_QUESTION_SEQ.CURRVAL FROM DUAL
+        </selectKey>
+    </insert>
+
+    <insert id="insertOption" parameterType="com.example.emp.model.SurveyOption">
+        INSERT INTO SURVEY_OPTION (OPTION_ID, QUESTION_ID, OPTION_TEXT, ORDER_NUM)
+        VALUES (SURVEY_OPTION_SEQ.NEXTVAL, #{questionId}, #{optionText}, #{orderNum})
+    </insert>
+
+    <insert id="insertResponse" parameterType="com.example.emp.model.SurveyResponse">
+        INSERT INTO SURVEY_RESPONSE (RESPONSE_ID, SURVEY_ID, EMPNO, SUBMITTED_AT)
+        VALUES (SURVEY_RESPONSE_SEQ.NEXTVAL, #{surveyId}, #{empno}, SYSDATE)
+        <selectKey keyProperty="responseId" resultType="long" order="AFTER">
+            SELECT SURVEY_RESPONSE_SEQ.CURRVAL FROM DUAL
+        </selectKey>
+    </insert>
+
+    <insert id="insertAnswer" parameterType="com.example.emp.model.SurveyAnswer">
+        INSERT INTO SURVEY_ANSWER (ANSWER_ID, RESPONSE_ID, QUESTION_ID, OPTION_ID, TEXT_VALUE)
+        VALUES (SURVEY_ANSWER_SEQ.NEXTVAL, #{responseId}, #{questionId}, #{optionId}, #{textValue})
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE SURVEY SET STATUS = #{status} WHERE SURVEY_ID = #{surveyId}
+    </update>
+
+    <delete id="deleteSurvey">
+        DELETE FROM SURVEY WHERE SURVEY_ID = #{surveyId}
+    </delete>
+
+    <select id="countResponse" resultType="int">
+        SELECT COUNT(*) FROM SURVEY_RESPONSE
+         WHERE SURVEY_ID = #{surveyId} AND EMPNO = #{empno}
+    </select>
+
+    <!-- 설문 결과: 선택지별 응답 수 -->
+    <select id="findResults" resultType="com.example.emp.model.SurveyResultDto">
+        SELECT q.QUESTION_ID, q.QUESTION_TEXT, q.QUESTION_TYPE,
+               o.OPTION_ID, o.OPTION_TEXT,
+               COUNT(a.ANSWER_ID) AS ANSWER_COUNT
+          FROM SURVEY_QUESTION q
+          LEFT JOIN SURVEY_OPTION o ON o.QUESTION_ID = q.QUESTION_ID
+          LEFT JOIN SURVEY_ANSWER a ON a.OPTION_ID = o.OPTION_ID
+         WHERE q.SURVEY_ID = #{surveyId}
+         GROUP BY q.QUESTION_ID, q.QUESTION_TEXT, q.QUESTION_TYPE, o.OPTION_ID, o.OPTION_TEXT
+         ORDER BY q.ORDER_NUM, o.ORDER_NUM
+    </select>
+
+    <!-- 주관식 응답 목록 -->
+    <select id="findTextAnswers" resultType="string">
+        SELECT a.TEXT_VALUE
+          FROM SURVEY_ANSWER a
+          JOIN SURVEY_RESPONSE r ON r.RESPONSE_ID = a.RESPONSE_ID
+         WHERE r.SURVEY_ID = #{surveyId}
+           AND a.QUESTION_ID = #{questionId}
+           AND a.TEXT_VALUE IS NOT NULL
+         ORDER BY r.SUBMITTED_AT DESC
+    </select>
+
+</mapper>
