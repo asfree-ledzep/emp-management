@@ -4,11 +4,14 @@ import com.example.emp.mapper.ExpenseMapper;
 import com.example.emp.model.*;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,6 +23,8 @@ import java.util.regex.*;
 
 @Service
 public class ExpenseService {
+
+    private static final Logger log = LoggerFactory.getLogger(ExpenseService.class);
 
     @Autowired private ExpenseMapper expenseMapper;
     @Autowired private S3Service s3Service;
@@ -36,24 +41,35 @@ public class ExpenseService {
     // OCR: 영수증 이미지 → S3 업로드 + Google Vision 분석
     // ─────────────────────────────────────────
     public OcrResultDto parseReceipt(Integer empno, MultipartFile file) throws IOException {
+        log.info("[OCR] 영수증 분석 시작 - empno: {}, 파일: {}, 크기: {} bytes",
+                empno, file.getOriginalFilename(), file.getSize());
+
         // 1. S3 업로드
         String receiptUrl = s3Service.uploadReceipt(empno, file);
+        log.info("[OCR] S3 업로드 완료: {}", receiptUrl);
 
         // 2. Base64 변환
         String base64 = Base64.getEncoder().encodeToString(file.getBytes());
+        log.info("[OCR] Base64 변환 완료, 길이: {}", base64.length());
 
         // 3. Google Vision API 호출
         String ocrText = callVisionApi(base64);
+        log.info("[OCR] Vision API 결과 텍스트 길이: {}", ocrText.length());
+        if (!ocrText.isBlank()) {
+            log.info("[OCR] 텍스트 앞 200자: {}", ocrText.substring(0, Math.min(200, ocrText.length())));
+        }
 
         // 4. 금액·날짜 파싱
         Double amount      = parseAmount(ocrText);
         String expenseDate = parseDate(ocrText);
+        log.info("[OCR] 파싱 결과 - 금액: {}, 날짜: {}", amount, expenseDate);
 
         return new OcrResultDto(receiptUrl, amount, expenseDate, ocrText);
     }
 
     @SuppressWarnings("unchecked")
     private String callVisionApi(String base64Image) {
+        log.info("[Vision API] 호출 시작 - base64 길이: {}", base64Image.length());
         try {
             Map<String, Object> image   = Map.of("content", base64Image);
             // DOCUMENT_TEXT_DETECTION: 문서/영수증에 더 정확함
@@ -68,15 +84,44 @@ public class ExpenseService {
             ResponseEntity<Map> response =
                     restTemplate.postForEntity(VISION_URL + visionApiKey, entity, Map.class);
 
+            log.info("[Vision API] 응답 HTTP 상태: {}", response.getStatusCode());
+
+            if (response.getBody() == null) {
+                log.warn("[Vision API] 응답 body가 null");
+                return "";
+            }
+
+            // error 응답 처리
+            if (response.getBody().containsKey("error")) {
+                log.error("[Vision API] 오류 응답: {}", response.getBody().get("error"));
+                return "";
+            }
+
             List<Map<String, Object>> responses =
                     (List<Map<String, Object>>) response.getBody().get("responses");
+
+            if (responses == null || responses.isEmpty()) {
+                log.warn("[Vision API] responses 배열이 비어있음");
+                return "";
+            }
+
             Map<String, Object> first = responses.get(0);
+            log.info("[Vision API] first 응답 키: {}", first.keySet());
+
+            // API 레벨 오류 처리
+            if (first.containsKey("error")) {
+                log.error("[Vision API] 개별 응답 오류: {}", first.get("error"));
+                return "";
+            }
 
             // 1순위: fullTextAnnotation.text
             Map<String, Object> fullText = (Map<String, Object>) first.get("fullTextAnnotation");
             if (fullText != null) {
                 String t = (String) fullText.get("text");
-                if (t != null && !t.isBlank()) return t;
+                if (t != null && !t.isBlank()) {
+                    log.info("[Vision API] fullTextAnnotation 추출 성공, 길이: {}", t.length());
+                    return t;
+                }
             }
 
             // 2순위: textAnnotations[0].description (fallback)
@@ -84,11 +129,21 @@ public class ExpenseService {
                     (List<Map<String, Object>>) first.get("textAnnotations");
             if (textAnnotations != null && !textAnnotations.isEmpty()) {
                 String t = (String) textAnnotations.get(0).get("description");
-                if (t != null && !t.isBlank()) return t;
+                if (t != null && !t.isBlank()) {
+                    log.info("[Vision API] textAnnotations fallback 추출 성공, 길이: {}", t.length());
+                    return t;
+                }
             }
 
+            log.warn("[Vision API] 텍스트 없음 - fullText: {}, textAnnotations 크기: {}",
+                    fullText != null ? "존재" : "null",
+                    textAnnotations != null ? textAnnotations.size() : 0);
+            return "";
+        } catch (HttpClientErrorException e) {
+            log.error("[Vision API] HTTP 오류 {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
             return "";
         } catch (Exception e) {
+            log.error("[Vision API] 예외 발생: {}", e.getMessage(), e);
             return "";
         }
     }
@@ -106,7 +161,7 @@ public class ExpenseService {
         Pattern.compile("지\\s*불\\s*금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
         Pattern.compile("금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
         // ₩ / W 기호 패턴 (예: ₩ 575,000 / W575,000)
-        Pattern.compile("[₩\\\\W]\\s*([\\d,]+)"),
+        Pattern.compile("[₩W]\\s*([\\d,]+)"),
         Pattern.compile("[Tt][Oo][Tt][Aa][Ll]\\s*[:\\s]?\\s*([\\d,]+)"),
         Pattern.compile("[Aa][Mm][Oo][Uu][Nn][Tt]\\s*[:\\s]?\\s*([\\d,]+)"),
     };
