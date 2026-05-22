@@ -31,6 +31,11 @@ public class NoticeService {
         );
     }
 
+    public void update(Long id, Notice notice) {
+        notice.setNoticeId(id);
+        noticeMapper.update(notice);
+    }
+
     public void delete(Long id) {
         noticeMapper.delete(id);
     }

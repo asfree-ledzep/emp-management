@@ -32,6 +32,13 @@
         VALUES (#{noticeId}, #{title}, #{content}, #{createdBy}, SYSDATE)
     </insert>
 
+    <update id="update" parameterType="com.example.emp.model.Notice">
+        UPDATE NOTICE
+           SET TITLE   = #{title},
+               CONTENT = #{content}
+         WHERE NOTICE_ID = #{noticeId}
+    </update>
+
     <delete id="delete" parameterType="long">
         DELETE FROM NOTICE WHERE NOTICE_ID = #{noticeId}
     </delete>

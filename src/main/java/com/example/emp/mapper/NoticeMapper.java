@@ -11,5 +11,6 @@ public interface NoticeMapper {
     List<Notice> findAll();
     Notice findById(Long noticeId);
     int insert(Notice notice);
+    int update(Notice notice);
     int delete(Long noticeId);
 }

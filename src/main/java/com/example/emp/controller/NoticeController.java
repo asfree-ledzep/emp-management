@@ -40,6 +40,14 @@ public class NoticeController {
         return ResponseEntity.ok(Map.of("message", "공지사항 등록 완료"));
     }
 
+    // 수정 (관리자만)
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Notice notice, Authentication auth) {
+        if (!isAdmin(auth)) return ResponseEntity.status(403).body(Map.of("error", "관리자만 수정 가능합니다."));
+        noticeService.update(id, notice);
+        return ResponseEntity.ok(Map.of("message", "공지사항 수정 완료"));
+    }
+
     // 삭제 (관리자만)
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id, Authentication auth) {
