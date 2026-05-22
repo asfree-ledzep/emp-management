@@ -47,6 +47,10 @@ public class KakaoService {
 
     // 코드로 토큰 교환 후 DB 저장
     public void connectKakao(String code, Integer empno) throws Exception {
+        log.info("카카오 연동 시작: empno={}, code={}", empno, code != null ? code.substring(0, Math.min(10, code.length())) + "..." : "null");
+        log.info("사용 redirect_uri={}", redirectUri);
+        log.info("사용 client_id={}", clientId);
+
         String body = "grant_type=authorization_code"
                 + "&client_id=" + clientId
                 + "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)
@@ -59,10 +63,15 @@ public class KakaoService {
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        log.info("카카오 토큰 응답 [HTTP {}]: {}", response.statusCode(), response.body());
+
         JsonNode json = objectMapper.readTree(response.body());
 
         if (!json.has("access_token")) {
-            throw new RuntimeException("카카오 토큰 발급 실패: " + response.body());
+            String kakaoError = json.has("error") ? json.get("error").asText() : "unknown";
+            String kakaoDesc  = json.has("error_description") ? json.get("error_description").asText() : response.body();
+            log.error("카카오 토큰 발급 실패: error={}, description={}", kakaoError, kakaoDesc);
+            throw new RuntimeException("카카오 토큰 발급 실패 [" + kakaoError + "]: " + kakaoDesc);
         }
 
         String accessToken  = json.get("access_token").asText();
