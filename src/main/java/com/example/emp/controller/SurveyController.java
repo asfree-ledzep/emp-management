@@ -2,6 +2,8 @@ package com.example.emp.controller;
 
 import com.example.emp.model.*;
 import com.example.emp.service.SurveyService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -13,6 +15,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/surveys")
 public class SurveyController {
+
+    private static final Logger log = LoggerFactory.getLogger(SurveyController.class);
 
     @Autowired
     private SurveyService surveyService;
@@ -111,9 +115,20 @@ public class SurveyController {
     // 설문 결과 (관리자만)
     @GetMapping("/{surveyId}/results")
     public ResponseEntity<?> getResults(@PathVariable Long surveyId, Authentication auth) {
+        if (auth == null) {
+            log.warn("[results] auth is null for surveyId={}", surveyId);
+            return ResponseEntity.status(403).body("auth null");
+        }
+        String authorities = auth.getAuthorities().stream()
+                .map(a -> a.getAuthority()).collect(java.util.stream.Collectors.joining(","));
+        log.info("[results] surveyId={} name={} authorities={}", surveyId, auth.getName(), authorities);
+
         boolean isAdmin = auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-        if (!isAdmin) return ResponseEntity.status(403).build();
+        if (!isAdmin) {
+            log.warn("[results] FORBIDDEN surveyId={} name={} authorities={}", surveyId, auth.getName(), authorities);
+            return ResponseEntity.status(403).body("not admin: " + authorities);
+        }
 
         List<SurveyResultDto> results = surveyService.getResults(surveyId);
         return ResponseEntity.ok(results);
