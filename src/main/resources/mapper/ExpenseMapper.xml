@@ -125,13 +125,24 @@
          GROUP BY EMPNO
     </insert>
 
+    <!-- 월별 통계 조회 — EXPENSE 테이블 실시간 집계 (통계 생성 없이도 즉시 조회 가능) -->
     <select id="findMonthlyStats" resultMap="monthlyStatResultMap">
-        SELECT s.STAT_ID, s.STAT_YEAR, s.STAT_MONTH, s.EMPNO, m.ENAME,
-               s.TOTAL_AMOUNT, s.EXPENSE_COUNT, s.CREATED_AT
-          FROM EXPENSE_MONTHLY_STAT s
-          LEFT JOIN EMP m ON m.EMPNO = s.EMPNO
-         WHERE s.STAT_YEAR = #{year} AND s.STAT_MONTH = #{month}
-         ORDER BY s.TOTAL_AMOUNT DESC
+        SELECT ROWNUM AS STAT_ID, t.*
+          FROM (
+            SELECT #{year}  AS STAT_YEAR,
+                   #{month} AS STAT_MONTH,
+                   e.EMPNO,
+                   m.ENAME,
+                   SUM(e.AMOUNT) AS TOTAL_AMOUNT,
+                   COUNT(*)      AS EXPENSE_COUNT,
+                   SYSDATE       AS CREATED_AT
+              FROM EXPENSE e
+              LEFT JOIN EMP m ON m.EMPNO = e.EMPNO
+             WHERE EXTRACT(YEAR  FROM e.EXPENSE_DATE) = #{year}
+               AND EXTRACT(MONTH FROM e.EXPENSE_DATE) = #{month}
+             GROUP BY e.EMPNO, m.ENAME
+             ORDER BY TOTAL_AMOUNT DESC
+          ) t
     </select>
 
     <!-- ===== 연별 통계 ===== -->
@@ -150,13 +161,22 @@
          GROUP BY EMPNO
     </insert>
 
+    <!-- 연별 통계 조회 — EXPENSE 테이블 실시간 집계 -->
     <select id="findYearlyStats" resultMap="yearlyStatResultMap">
-        SELECT s.STAT_ID, s.STAT_YEAR, s.EMPNO, m.ENAME,
-               s.TOTAL_AMOUNT, s.EXPENSE_COUNT, s.CREATED_AT
-          FROM EXPENSE_YEARLY_STAT s
-          LEFT JOIN EMP m ON m.EMPNO = s.EMPNO
-         WHERE s.STAT_YEAR = #{year}
-         ORDER BY s.TOTAL_AMOUNT DESC
+        SELECT ROWNUM AS STAT_ID, t.*
+          FROM (
+            SELECT #{year} AS STAT_YEAR,
+                   e.EMPNO,
+                   m.ENAME,
+                   SUM(e.AMOUNT) AS TOTAL_AMOUNT,
+                   COUNT(*)      AS EXPENSE_COUNT,
+                   SYSDATE       AS CREATED_AT
+              FROM EXPENSE e
+              LEFT JOIN EMP m ON m.EMPNO = e.EMPNO
+             WHERE EXTRACT(YEAR FROM e.EXPENSE_DATE) = #{year}
+             GROUP BY e.EMPNO, m.ENAME
+             ORDER BY TOTAL_AMOUNT DESC
+          ) t
     </select>
 
 </mapper>
