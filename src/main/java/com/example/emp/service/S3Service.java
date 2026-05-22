@@ -56,6 +56,23 @@ public class S3Service {
         return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
     }
 
+    // 영수증 이미지 업로드 (receipts/emp-{empno}/{timestamp}.{ext})
+    public String uploadReceipt(Integer empno, MultipartFile file) throws IOException {
+        String ext = getExtension(file.getOriginalFilename());
+        String key = "receipts/emp-" + empno + "/" + System.currentTimeMillis() + "." + ext;
+
+        s3Client.putObject(
+                PutObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(key)
+                        .contentType(file.getContentType())
+                        .build(),
+                RequestBody.fromInputStream(file.getInputStream(), file.getSize())
+        );
+
+        return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
+    }
+
     // S3 사진 삭제 (URL에서 키 추출)
     public void deletePhoto(String photoUrl) {
         try {
