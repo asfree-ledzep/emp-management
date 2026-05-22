@@ -148,22 +148,28 @@ public class ExpenseService {
         }
     }
 
-    // 금액 파싱 — 키워드+금액 패턴 (우선순위 순)
+    // 금액 최대 한도: 1억원 초과는 주문번호/계좌번호 등으로 간주
+    private static final double MAX_AMOUNT = 100_000_000.0;
+
+    // 금액 파싱 — 키워드 뒤 비숫자 최대 30자 허용 (줄바꿈, 공백, 콜론 등)
     private static final Pattern[] AMOUNT_PATTERNS = {
-        Pattern.compile("합\\s*계\\s*[:\\s：]?\\s*([\\d,]+)"),
-        Pattern.compile("총\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
-        Pattern.compile("소\\s*계\\s*[:\\s：]?\\s*([\\d,]+)"),
-        Pattern.compile("결\\s*제\\s*금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
-        Pattern.compile("실\\s*결\\s*제\\s*[:\\s：]?\\s*([\\d,]+)"),
-        Pattern.compile("승\\s*인\\s*금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
-        Pattern.compile("청\\s*구\\s*금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
-        Pattern.compile("받\\s*을\\s*금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
-        Pattern.compile("지\\s*불\\s*금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
-        Pattern.compile("금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
+        // 카드전표 우선 패턴 (합계/청구 등)
+        Pattern.compile("합\\s*계[^\\d\\n]{0,30}([\\d,]+)"),
+        Pattern.compile("총\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
+        Pattern.compile("소\\s*계[^\\d\\n]{0,30}([\\d,]+)"),
+        Pattern.compile("청\\s*구\\s*금\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
+        Pattern.compile("결\\s*제\\s*금\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
+        Pattern.compile("실\\s*결\\s*제[^\\d\\n]{0,30}([\\d,]+)"),
+        Pattern.compile("승\\s*인\\s*금\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
+        Pattern.compile("판\\s*매\\s*금\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
+        Pattern.compile("받\\s*을\\s*금\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
+        Pattern.compile("지\\s*불\\s*금\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
+        Pattern.compile("청\\s*구\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
+        Pattern.compile("금\\s*액[^\\d\\n]{0,20}([\\d,]+)"),
         // ₩ / W 기호 패턴 (예: ₩ 575,000 / W575,000)
         Pattern.compile("[₩W]\\s*([\\d,]+)"),
-        Pattern.compile("[Tt][Oo][Tt][Aa][Ll]\\s*[:\\s]?\\s*([\\d,]+)"),
-        Pattern.compile("[Aa][Mm][Oo][Uu][Nn][Tt]\\s*[:\\s]?\\s*([\\d,]+)"),
+        Pattern.compile("[Tt][Oo][Tt][Aa][Ll][^\\d]{0,10}([\\d,]+)"),
+        Pattern.compile("[Aa][Mm][Oo][Uu][Nn][Tt][^\\d]{0,10}([\\d,]+)"),
     };
 
     private Double parseAmount(String text) {
@@ -172,35 +178,35 @@ public class ExpenseService {
         // 정규화: 탭·연속 공백을 단일 공백으로 (개행은 유지)
         String norm = text.replaceAll("[ \\t]+", " ").trim();
 
-        // 1순위: 키워드 패턴 매칭
+        // 1순위: 키워드 패턴 매칭 (1억 이하만 유효)
         for (Pattern p : AMOUNT_PATTERNS) {
             Matcher m = p.matcher(norm);
-            if (m.find()) {
+            while (m.find()) {
                 try {
                     double v = Double.parseDouble(m.group(1).replace(",", ""));
-                    if (v >= 100) return v;
+                    if (v >= 100 && v <= MAX_AMOUNT) return v;
                 } catch (NumberFormatException ignored) {}
             }
         }
 
-        // 2순위: "숫자원" 패턴 중 최댓값 (예: 15,000원 / 15000원)
+        // 2순위: "숫자원" 패턴 중 최댓값 (예: 15,000원 / 15000원), 1억 이하
         Matcher wonM = Pattern.compile("([\\d,]+)\\s*원").matcher(norm);
         double maxWon = 0;
         while (wonM.find()) {
             try {
                 double v = Double.parseDouble(wonM.group(1).replace(",", ""));
-                if (v > maxWon && v >= 100) maxWon = v;
+                if (v > maxWon && v >= 100 && v <= MAX_AMOUNT) maxWon = v;
             } catch (NumberFormatException ignored) {}
         }
         if (maxWon >= 100) return maxWon;
 
-        // 3순위: 1,000 이상인 숫자 중 최댓값 (최후 폴백)
+        // 3순위: 최후 폴백 — 1,000 이상 1억 이하 숫자 중 최댓값
         Matcher numM = Pattern.compile("([\\d,]{4,})").matcher(norm);
         double maxNum = 0;
         while (numM.find()) {
             try {
                 double v = Double.parseDouble(numM.group(1).replace(",", ""));
-                if (v > maxNum && v >= 1000) maxNum = v;
+                if (v > maxNum && v >= 1000 && v <= MAX_AMOUNT) maxNum = v;
             } catch (NumberFormatException ignored) {}
         }
         return maxNum >= 1000 ? maxNum : null;
