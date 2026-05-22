@@ -27,6 +27,9 @@ public class KakaoService {
     @Value("${kakao.client-id}")
     private String clientId;
 
+    @Value("${kakao.client-secret:}")
+    private String clientSecret;
+
     @Value("${kakao.redirect-uri}")
     private String redirectUri;
 
@@ -54,7 +57,10 @@ public class KakaoService {
         String body = "grant_type=authorization_code"
                 + "&client_id=" + clientId
                 + "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)
-                + "&code=" + code;
+                + "&code=" + code
+                + (clientSecret != null && !clientSecret.isBlank()
+                   ? "&client_secret=" + clientSecret : "");
+        log.info("client_secret 포함 여부: {}", (clientSecret != null && !clientSecret.isBlank()));
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://kauth.kakao.com/oauth/token"))
@@ -143,7 +149,9 @@ public class KakaoService {
 
         String body = "grant_type=refresh_token"
                 + "&client_id=" + clientId
-                + "&refresh_token=" + empKakao.getRefreshToken();
+                + "&refresh_token=" + empKakao.getRefreshToken()
+                + (clientSecret != null && !clientSecret.isBlank()
+                   ? "&client_secret=" + clientSecret : "");
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://kauth.kakao.com/oauth/token"))
