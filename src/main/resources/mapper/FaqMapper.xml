@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.FaqMapper">
+
+    <resultMap id="faqResultMap" type="com.example.emp.model.Faq">
+        <id     property="faqId"     column="FAQ_ID"/>
+        <result property="category"  column="CATEGORY"/>
+        <result property="question"  column="QUESTION"/>
+        <result property="keywords"  column="KEYWORDS"/>
+        <result property="answer"    column="ANSWER"/>
+        <result property="createdBy" column="CREATED_BY"/>
+        <result property="createdAt" column="CREATED_AT"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="faqResultMap">
+        SELECT FAQ_ID, CATEGORY, QUESTION, KEYWORDS, ANSWER, CREATED_BY, CREATED_AT
+          FROM FAQ
+         ORDER BY CATEGORY, FAQ_ID
+    </select>
+
+    <select id="findById" parameterType="long" resultMap="faqResultMap">
+        SELECT FAQ_ID, CATEGORY, QUESTION, KEYWORDS, ANSWER, CREATED_BY, CREATED_AT
+          FROM FAQ
+         WHERE FAQ_ID = #{faqId}
+    </select>
+
+    <insert id="insert" parameterType="com.example.emp.model.Faq">
+        <selectKey keyProperty="faqId" resultType="long" order="BEFORE">
+            SELECT FAQ_SEQ.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO FAQ (FAQ_ID, CATEGORY, QUESTION, KEYWORDS, ANSWER, CREATED_BY, CREATED_AT)
+        VALUES (#{faqId}, #{category}, #{question}, #{keywords}, #{answer}, #{createdBy}, SYSDATE)
+    </insert>
+
+    <update id="update" parameterType="com.example.emp.model.Faq">
+        UPDATE FAQ
+           SET CATEGORY  = #{category},
+               QUESTION  = #{question},
+               KEYWORDS  = #{keywords},
+               ANSWER    = #{answer}
+         WHERE FAQ_ID = #{faqId}
+    </update>
+
+    <delete id="delete" parameterType="long">
+        DELETE FROM FAQ WHERE FAQ_ID = #{faqId}
+    </delete>
+
+</mapper>
