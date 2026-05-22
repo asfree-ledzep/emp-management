@@ -172,14 +172,25 @@ public class ExpenseService {
         Pattern.compile("[Aa][Mm][Oo][Uu][Nn][Tt][^\\d]{0,10}([\\d,.]+)"),
     };
 
+    // 날짜처럼 보이는 패턴: "2003.02.10", "2023-10-02", "23/05/12" 등
+    private static final Pattern DATE_LIKE =
+        Pattern.compile("\\d{2,4}[.,/\\-]\\d{1,2}[.,/\\-]\\d{1,2}");
+
     /**
-     * 금액 문자열 → double 변환
-     * "5,000" / "5.000" 모두 5000으로 처리 (한국 영수증 천단위 구분자 혼용 대응)
-     * 단, "5,500.50" 같은 소수점 형식은 없다고 가정 (영수증은 정수)
+     * 금액 문자열 → Double 변환 (날짜 패턴이면 null 반환)
+     * "5,000"  → 5000  (콤마 천단위)
+     * "5.000"  → 5000  (점 천단위)
+     * "2003.02.10" → null (날짜 패턴 → 제외)
      */
-    private double toAmountDouble(String s) {
-        // 콤마, 점 모두 제거 후 파싱 (5,000 → 5000 / 5.000 → 5000)
-        return Double.parseDouble(s.replaceAll("[,.]", ""));
+    private Double toAmountDoubleOrNull(String s) {
+        if (s == null || s.isBlank()) return null;
+        // 날짜 패턴(yyyy.MM.dd / yy-MM-dd 등)이면 금액으로 사용 안 함
+        if (DATE_LIKE.matcher(s).matches()) return null;
+        try {
+            return Double.parseDouble(s.replaceAll("[,.]", ""));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private Double parseAmount(String text) {
@@ -188,14 +199,12 @@ public class ExpenseService {
         // 정규화: 탭·연속 공백을 단일 공백으로 (개행은 유지)
         String norm = text.replaceAll("[ \\t]+", " ").trim();
 
-        // 1순위: 키워드 패턴 매칭 (100 이상 1억 이하)
+        // 1순위: 키워드 패턴 매칭 (100 이상 1억 이하, 날짜 패턴 제외)
         for (Pattern p : AMOUNT_PATTERNS) {
             Matcher m = p.matcher(norm);
             while (m.find()) {
-                try {
-                    double v = toAmountDouble(m.group(1));
-                    if (v >= 100 && v <= MAX_AMOUNT) return v;
-                } catch (NumberFormatException ignored) {}
+                Double v = toAmountDoubleOrNull(m.group(1));
+                if (v != null && v >= 100 && v <= MAX_AMOUNT) return v;
             }
         }
 
@@ -203,26 +212,17 @@ public class ExpenseService {
         Matcher wonM = Pattern.compile("([\\d,.]+)\\s*원").matcher(norm);
         double maxWon = 0;
         while (wonM.find()) {
-            try {
-                double v = toAmountDouble(wonM.group(1));
-                if (v > maxWon && v >= 100 && v <= MAX_AMOUNT) maxWon = v;
-            } catch (NumberFormatException ignored) {}
+            Double v = toAmountDoubleOrNull(wonM.group(1));
+            if (v != null && v > maxWon && v >= 100 && v <= MAX_AMOUNT) maxWon = v;
         }
         if (maxWon >= 100) return maxWon;
 
-        // 3순위: 최후 폴백 — 1,000 이상 1억 이하 숫자 중 최댓값
-        // [\\d,.] 로 점/콤마 구분자 모두 허용, 연도(4자리)와 혼동 방지를 위해 5자리 이상 우선
+        // 3순위: 최후 폴백 — 1,000 이상 1억 이하 숫자 중 최댓값 (날짜 패턴 자동 제외)
         Matcher numM = Pattern.compile("([\\d,.]{4,})").matcher(norm);
         double maxNum = 0;
         while (numM.find()) {
-            String raw = numM.group(1);
-            // "2023-" 같이 날짜 패턴이 아닌 경우만 (뒤에 - 가 오는 경우 제외)
-            int endIdx = numM.end();
-            if (endIdx < norm.length() && norm.charAt(endIdx) == '-') continue;
-            try {
-                double v = toAmountDouble(raw);
-                if (v > maxNum && v >= 1000 && v <= MAX_AMOUNT) maxNum = v;
-            } catch (NumberFormatException ignored) {}
+            Double v = toAmountDoubleOrNull(numM.group(1));
+            if (v != null && v > maxNum && v >= 1000 && v <= MAX_AMOUNT) maxNum = v;
         }
         return maxNum >= 1000 ? maxNum : null;
     }
