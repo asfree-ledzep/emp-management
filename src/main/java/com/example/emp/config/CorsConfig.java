@@ -21,7 +21,7 @@ public class CorsConfig implements WebMvcConfigurer {
             .allowedOrigins("http://localhost:3000", "https://emp-management-react.vercel.app")
 
             // 허용할 HTTP 메서드 (조회·등록·수정·삭제 전부 포함)
-            .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
 
             // 모든 요청 헤더 허용
             .allowedHeaders("*")
