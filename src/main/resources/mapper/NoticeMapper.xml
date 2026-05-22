@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.NoticeMapper">
+
+    <resultMap id="noticeResultMap" type="com.example.emp.model.Notice">
+        <id     property="noticeId"   column="NOTICE_ID"/>
+        <result property="title"      column="TITLE"/>
+        <result property="content"    column="CONTENT"/>
+        <result property="createdBy"  column="CREATED_BY"/>
+        <result property="createdAt"  column="CREATED_AT"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="noticeResultMap">
+        SELECT NOTICE_ID, TITLE, CONTENT, CREATED_BY, CREATED_AT
+          FROM NOTICE
+         ORDER BY NOTICE_ID DESC
+    </select>
+
+    <select id="findById" parameterType="long" resultMap="noticeResultMap">
+        SELECT NOTICE_ID, TITLE, CONTENT, CREATED_BY, CREATED_AT
+          FROM NOTICE
+         WHERE NOTICE_ID = #{noticeId}
+    </select>
+
+    <insert id="insert" parameterType="com.example.emp.model.Notice">
+        <selectKey keyProperty="noticeId" resultType="long" order="BEFORE">
+            SELECT NOTICE_SEQ.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO NOTICE (NOTICE_ID, TITLE, CONTENT, CREATED_BY, CREATED_AT)
+        VALUES (#{noticeId}, #{title}, #{content}, #{createdBy}, SYSDATE)
+    </insert>
+
+    <delete id="delete" parameterType="long">
+        DELETE FROM NOTICE WHERE NOTICE_ID = #{noticeId}
+    </delete>
+
+</mapper>

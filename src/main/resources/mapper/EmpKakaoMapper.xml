@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.EmpKakaoMapper">
+
+    <resultMap id="empKakaoResultMap" type="com.example.emp.model.EmpKakao">
+        <id     property="empno"        column="EMPNO"/>
+        <result property="accessToken"  column="ACCESS_TOKEN"/>
+        <result property="refreshToken" column="REFRESH_TOKEN"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="empKakaoResultMap">
+        SELECT EMPNO, ACCESS_TOKEN, REFRESH_TOKEN FROM EMP_KAKAO
+    </select>
+
+    <select id="findByEmpno" parameterType="int" resultMap="empKakaoResultMap">
+        SELECT EMPNO, ACCESS_TOKEN, REFRESH_TOKEN FROM EMP_KAKAO WHERE EMPNO = #{empno}
+    </select>
+
+    <insert id="upsert" parameterType="com.example.emp.model.EmpKakao">
+        MERGE INTO EMP_KAKAO ek
+        USING DUAL
+           ON (ek.EMPNO = #{empno})
+        WHEN MATCHED THEN
+            UPDATE SET ek.ACCESS_TOKEN  = #{accessToken},
+                       ek.REFRESH_TOKEN = #{refreshToken},
+                       ek.UPDATED_AT    = SYSDATE
+        WHEN NOT MATCHED THEN
+            INSERT (EMPNO, ACCESS_TOKEN, REFRESH_TOKEN, UPDATED_AT)
+            VALUES (#{empno}, #{accessToken}, #{refreshToken}, SYSDATE)
+    </insert>
+
+    <update id="updateAccessToken">
+        UPDATE EMP_KAKAO
+           SET ACCESS_TOKEN = #{accessToken},
+               UPDATED_AT   = SYSDATE
+         WHERE EMPNO = #{empno}
+    </update>
+
+</mapper>
