@@ -55,10 +55,11 @@ public class ExpenseService {
     @SuppressWarnings("unchecked")
     private String callVisionApi(String base64Image) {
         try {
-            Map<String, Object> image    = Map.of("content", base64Image);
-            Map<String, Object> feature  = Map.of("type", "TEXT_DETECTION");
-            Map<String, Object> request  = Map.of("image", image, "features", List.of(feature));
-            Map<String, Object> body     = Map.of("requests", List.of(request));
+            Map<String, Object> image   = Map.of("content", base64Image);
+            // DOCUMENT_TEXT_DETECTION: 문서/영수증에 더 정확함
+            Map<String, Object> feature = Map.of("type", "DOCUMENT_TEXT_DETECTION");
+            Map<String, Object> request = Map.of("image", image, "features", List.of(feature));
+            Map<String, Object> body    = Map.of("requests", List.of(request));
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -69,12 +70,24 @@ public class ExpenseService {
 
             List<Map<String, Object>> responses =
                     (List<Map<String, Object>>) response.getBody().get("responses");
-            Map<String, Object> firstResponse = responses.get(0);
-            Map<String, Object> fullText =
-                    (Map<String, Object>) firstResponse.get("fullTextAnnotation");
+            Map<String, Object> first = responses.get(0);
 
-            if (fullText == null) return "";
-            return (String) fullText.get("text");
+            // 1순위: fullTextAnnotation.text
+            Map<String, Object> fullText = (Map<String, Object>) first.get("fullTextAnnotation");
+            if (fullText != null) {
+                String t = (String) fullText.get("text");
+                if (t != null && !t.isBlank()) return t;
+            }
+
+            // 2순위: textAnnotations[0].description (fallback)
+            List<Map<String, Object>> textAnnotations =
+                    (List<Map<String, Object>>) first.get("textAnnotations");
+            if (textAnnotations != null && !textAnnotations.isEmpty()) {
+                String t = (String) textAnnotations.get(0).get("description");
+                if (t != null && !t.isBlank()) return t;
+            }
+
+            return "";
         } catch (Exception e) {
             return "";
         }
@@ -92,6 +105,8 @@ public class ExpenseService {
         Pattern.compile("받\\s*을\\s*금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
         Pattern.compile("지\\s*불\\s*금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
         Pattern.compile("금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
+        // ₩ / W 기호 패턴 (예: ₩ 575,000 / W575,000)
+        Pattern.compile("[₩\\\\W]\\s*([\\d,]+)"),
         Pattern.compile("[Tt][Oo][Tt][Aa][Ll]\\s*[:\\s]?\\s*([\\d,]+)"),
         Pattern.compile("[Aa][Mm][Oo][Uu][Nn][Tt]\\s*[:\\s]?\\s*([\\d,]+)"),
     };
