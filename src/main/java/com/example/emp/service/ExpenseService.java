@@ -152,25 +152,35 @@ public class ExpenseService {
     private static final double MAX_AMOUNT = 100_000_000.0;
 
     // 금액 파싱 — 키워드 뒤 비숫자 최대 30자 허용 (줄바꿈, 공백, 콜론 등)
+    // [\\d,.] : 콤마(5,000)와 점(5.000) 천단위 구분자 모두 허용
     private static final Pattern[] AMOUNT_PATTERNS = {
-        // 카드전표 우선 패턴 (합계/청구 등)
-        Pattern.compile("합\\s*계[^\\d\\n]{0,30}([\\d,]+)"),
-        Pattern.compile("총\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
-        Pattern.compile("소\\s*계[^\\d\\n]{0,30}([\\d,]+)"),
-        Pattern.compile("청\\s*구\\s*금\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
-        Pattern.compile("결\\s*제\\s*금\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
-        Pattern.compile("실\\s*결\\s*제[^\\d\\n]{0,30}([\\d,]+)"),
-        Pattern.compile("승\\s*인\\s*금\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
-        Pattern.compile("판\\s*매\\s*금\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
-        Pattern.compile("받\\s*을\\s*금\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
-        Pattern.compile("지\\s*불\\s*금\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
-        Pattern.compile("청\\s*구\\s*액[^\\d\\n]{0,30}([\\d,]+)"),
-        Pattern.compile("금\\s*액[^\\d\\n]{0,20}([\\d,]+)"),
+        Pattern.compile("합\\s*계[^\\d\\n]{0,30}([\\d,.]+)"),
+        Pattern.compile("총\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
+        Pattern.compile("소\\s*계[^\\d\\n]{0,30}([\\d,.]+)"),
+        Pattern.compile("청\\s*구\\s*금\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
+        Pattern.compile("결\\s*제\\s*금\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
+        Pattern.compile("실\\s*결\\s*제[^\\d\\n]{0,30}([\\d,.]+)"),
+        Pattern.compile("승\\s*인\\s*금\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
+        Pattern.compile("판\\s*매\\s*금\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
+        Pattern.compile("받\\s*을\\s*금\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
+        Pattern.compile("지\\s*불\\s*금\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
+        Pattern.compile("청\\s*구\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
+        Pattern.compile("금\\s*액[^\\d\\n]{0,20}([\\d,.]+)"),
         // ₩ / W 기호 패턴 (예: ₩ 575,000 / W575,000)
-        Pattern.compile("[₩W]\\s*([\\d,]+)"),
-        Pattern.compile("[Tt][Oo][Tt][Aa][Ll][^\\d]{0,10}([\\d,]+)"),
-        Pattern.compile("[Aa][Mm][Oo][Uu][Nn][Tt][^\\d]{0,10}([\\d,]+)"),
+        Pattern.compile("[₩W]\\s*([\\d,.]+)"),
+        Pattern.compile("[Tt][Oo][Tt][Aa][Ll][^\\d]{0,10}([\\d,.]+)"),
+        Pattern.compile("[Aa][Mm][Oo][Uu][Nn][Tt][^\\d]{0,10}([\\d,.]+)"),
     };
+
+    /**
+     * 금액 문자열 → double 변환
+     * "5,000" / "5.000" 모두 5000으로 처리 (한국 영수증 천단위 구분자 혼용 대응)
+     * 단, "5,500.50" 같은 소수점 형식은 없다고 가정 (영수증은 정수)
+     */
+    private double toAmountDouble(String s) {
+        // 콤마, 점 모두 제거 후 파싱 (5,000 → 5000 / 5.000 → 5000)
+        return Double.parseDouble(s.replaceAll("[,.]", ""));
+    }
 
     private Double parseAmount(String text) {
         if (text == null || text.isBlank()) return null;
@@ -178,34 +188,39 @@ public class ExpenseService {
         // 정규화: 탭·연속 공백을 단일 공백으로 (개행은 유지)
         String norm = text.replaceAll("[ \\t]+", " ").trim();
 
-        // 1순위: 키워드 패턴 매칭 (1억 이하만 유효)
+        // 1순위: 키워드 패턴 매칭 (100 이상 1억 이하)
         for (Pattern p : AMOUNT_PATTERNS) {
             Matcher m = p.matcher(norm);
             while (m.find()) {
                 try {
-                    double v = Double.parseDouble(m.group(1).replace(",", ""));
+                    double v = toAmountDouble(m.group(1));
                     if (v >= 100 && v <= MAX_AMOUNT) return v;
                 } catch (NumberFormatException ignored) {}
             }
         }
 
-        // 2순위: "숫자원" 패턴 중 최댓값 (예: 15,000원 / 15000원), 1억 이하
-        Matcher wonM = Pattern.compile("([\\d,]+)\\s*원").matcher(norm);
+        // 2순위: "숫자원" 패턴 중 최댓값 (예: 15,000원 / 15.000원), 1억 이하
+        Matcher wonM = Pattern.compile("([\\d,.]+)\\s*원").matcher(norm);
         double maxWon = 0;
         while (wonM.find()) {
             try {
-                double v = Double.parseDouble(wonM.group(1).replace(",", ""));
+                double v = toAmountDouble(wonM.group(1));
                 if (v > maxWon && v >= 100 && v <= MAX_AMOUNT) maxWon = v;
             } catch (NumberFormatException ignored) {}
         }
         if (maxWon >= 100) return maxWon;
 
         // 3순위: 최후 폴백 — 1,000 이상 1억 이하 숫자 중 최댓값
-        Matcher numM = Pattern.compile("([\\d,]{4,})").matcher(norm);
+        // [\\d,.] 로 점/콤마 구분자 모두 허용, 연도(4자리)와 혼동 방지를 위해 5자리 이상 우선
+        Matcher numM = Pattern.compile("([\\d,.]{4,})").matcher(norm);
         double maxNum = 0;
         while (numM.find()) {
+            String raw = numM.group(1);
+            // "2023-" 같이 날짜 패턴이 아닌 경우만 (뒤에 - 가 오는 경우 제외)
+            int endIdx = numM.end();
+            if (endIdx < norm.length() && norm.charAt(endIdx) == '-') continue;
             try {
-                double v = Double.parseDouble(numM.group(1).replace(",", ""));
+                double v = toAmountDouble(raw);
                 if (v > maxNum && v >= 1000 && v <= MAX_AMOUNT) maxNum = v;
             } catch (NumberFormatException ignored) {}
         }
