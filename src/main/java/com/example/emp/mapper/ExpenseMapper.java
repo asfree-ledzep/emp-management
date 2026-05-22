@@ -11,6 +11,7 @@ public interface ExpenseMapper {
 
     // 지출 내역
     void insertExpense(Expense expense);
+    Expense findById(Long expenseId);
     List<Expense> findByEmpno(Integer empno);
     List<Expense> findByMonth(@Param("year") int year, @Param("month") int month);
     void updateConfirm(@Param("expenseId") Long expenseId, @Param("confirmedBy") String confirmedBy);

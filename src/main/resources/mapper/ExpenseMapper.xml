@@ -68,6 +68,17 @@
            AND OCR_HASH = #{ocrHash}
     </select>
 
+    <!-- 단건 조회 (승인 알림용) -->
+    <select id="findById" resultMap="expenseResultMap">
+        SELECT e.EXPENSE_ID, e.EMPNO, m.ENAME, e.RECEIPT_URL,
+               TO_CHAR(e.EXPENSE_DATE, 'YYYY-MM-DD') AS EXPENSE_DATE,
+               e.AMOUNT, e.DESCRIPTION, e.CATEGORY, e.STATUS,
+               e.OCR_RAW, e.CREATED_AT, e.CONFIRMED_BY, e.CONFIRMED_AT
+          FROM EXPENSE e
+          LEFT JOIN EMP m ON m.EMPNO = e.EMPNO
+         WHERE e.EXPENSE_ID = #{expenseId}
+    </select>
+
     <!-- 사원별 지출 목록 -->
     <select id="findByEmpno" resultMap="expenseResultMap">
         SELECT e.EXPENSE_ID, e.EMPNO, m.ENAME, e.RECEIPT_URL,

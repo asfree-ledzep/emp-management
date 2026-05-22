@@ -150,4 +150,13 @@
          ORDER BY r.SUBMITTED_AT DESC
     </select>
 
+    <!-- 내일 마감되는 ACTIVE 설문 (D-1 알림용) -->
+    <select id="findExpiringTomorrow" resultMap="surveyListResultMap">
+        SELECT SURVEY_ID, TITLE, DESCRIPTION, STATUS, CREATED_BY, CREATED_AT, END_DATE,
+               0 AS RESPONSE_COUNT
+          FROM SURVEY
+         WHERE STATUS   = 'ACTIVE'
+           AND END_DATE = TRUNC(SYSDATE) + 1
+    </select>
+
 </mapper>

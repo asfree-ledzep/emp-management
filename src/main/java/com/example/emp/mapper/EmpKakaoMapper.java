@@ -12,4 +12,5 @@ public interface EmpKakaoMapper {
     List<EmpKakao> findAll();
     EmpKakao findByEmpno(Integer empno);
     void updateAccessToken(@Param("empno") Integer empno, @Param("accessToken") String accessToken);
+    int countAll();
 }

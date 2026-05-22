@@ -44,4 +44,7 @@ public interface SurveyMapper {
 
     // 주관식 응답 목록
     List<String> findTextAnswers(@Param("surveyId") Long surveyId, @Param("questionId") Long questionId);
+
+    // 내일 마감되는 ACTIVE 설문 목록 (D-1 알림용)
+    List<Survey> findExpiringTomorrow();
 }

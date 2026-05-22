@@ -21,6 +21,12 @@ public class KakaoController {
         return ResponseEntity.ok(Map.of("url", kakaoService.getAuthUrl()));
     }
 
+    // 카카오 연동 사원 수 조회
+    @GetMapping("/connected-count")
+    public ResponseEntity<?> getConnectedCount() {
+        return ResponseEntity.ok(Map.of("count", kakaoService.countConnected()));
+    }
+
     // 콜백: 코드로 토큰 교환 + DB 저장
     @PostMapping("/callback")
     public ResponseEntity<?> callback(@RequestBody Map<String, String> body, Authentication auth) {

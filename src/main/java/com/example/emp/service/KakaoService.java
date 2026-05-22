@@ -94,6 +94,34 @@ public class KakaoService {
 
     private static final String APP_URL = "https://emp-management-react.vercel.app";
 
+    // 연동된 사원 수 조회
+    public int countConnected() {
+        return empKakaoMapper.countAll();
+    }
+
+    // 특정 사원에게 카카오톡 메시지 발송
+    public void sendMessageToEmp(Integer empno, String title, String content, String pageUrl) {
+        EmpKakao empKakao = empKakaoMapper.findByEmpno(empno);
+        if (empKakao == null) {
+            log.info("카카오 미연동 사원: empno={}", empno);
+            return;
+        }
+        try {
+            sendMessage(empKakao, title, content, pageUrl);
+        } catch (Exception e) {
+            log.warn("카카오 메시지 실패 [empno={}], 토큰 갱신 시도: {}", empno, e.getMessage());
+            try {
+                String newToken = refreshAccessToken(empKakao);
+                if (newToken != null) {
+                    empKakao.setAccessToken(newToken);
+                    sendMessage(empKakao, title, content, pageUrl);
+                }
+            } catch (Exception ex) {
+                log.warn("카카오 메시지 최종 실패 [empno={}]: {}", empno, ex.getMessage());
+            }
+        }
+    }
+
     // 전체 사원에게 카카오톡 메시지 발송
     public void sendMessageToAll(String title, String content, String pageUrl) {
         List<EmpKakao> kakaoList = empKakaoMapper.findAll();

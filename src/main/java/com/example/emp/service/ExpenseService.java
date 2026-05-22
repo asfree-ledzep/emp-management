@@ -30,6 +30,7 @@ public class ExpenseService {
 
     @Autowired private ExpenseMapper expenseMapper;
     @Autowired private S3Service s3Service;
+    @Autowired private KakaoService kakaoService;
 
     @Value("${google.vision.api-key}")
     private String visionApiKey;
@@ -333,6 +334,24 @@ public class ExpenseService {
 
     public void confirm(Long expenseId, String confirmedBy) {
         expenseMapper.updateConfirm(expenseId, confirmedBy);
+        // 해당 사원에게 카카오톡 승인 알림 발송
+        try {
+            Expense expense = expenseMapper.findById(expenseId);
+            if (expense != null && expense.getEmpno() != null) {
+                String amount = String.format("%,d", expense.getAmount().longValue());
+                kakaoService.sendMessageToEmp(
+                    expense.getEmpno(),
+                    "✅ 지출 승인 완료",
+                    "지출이 승인되었습니다.\n\n"
+                        + "• 날짜: " + expense.getExpenseDate() + "\n"
+                        + "• 금액: " + amount + " 원\n"
+                        + "• 카테고리: " + (expense.getCategory() != null ? expense.getCategory() : "-"),
+                    "https://emp-management-react.vercel.app/?page=expense"
+                );
+            }
+        } catch (Exception e) {
+            log.warn("지출 승인 카카오 알림 실패: {}", e.getMessage());
+        }
     }
 
     public void delete(Long expenseId) {

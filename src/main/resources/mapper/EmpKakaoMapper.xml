@@ -38,4 +38,8 @@
          WHERE EMPNO = #{empno}
     </update>
 
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM EMP_KAKAO
+    </select>
+
 </mapper>
