@@ -92,8 +92,10 @@ public class KakaoService {
         log.info("카카오 연동 완료: empno={}", empno);
     }
 
+    private static final String APP_URL = "https://emp-management-react.vercel.app";
+
     // 전체 사원에게 카카오톡 메시지 발송
-    public void sendMessageToAll(String title, String content) {
+    public void sendMessageToAll(String title, String content, String pageUrl) {
         List<EmpKakao> kakaoList = empKakaoMapper.findAll();
         if (kakaoList.isEmpty()) {
             log.info("카카오 연동된 사원 없음");
@@ -101,14 +103,14 @@ public class KakaoService {
         }
         for (EmpKakao empKakao : kakaoList) {
             try {
-                sendMessage(empKakao, title, content);
+                sendMessage(empKakao, title, content, pageUrl);
             } catch (Exception e) {
                 log.warn("카카오 메시지 실패 [empno={}], 토큰 갱신 시도: {}", empKakao.getEmpno(), e.getMessage());
                 try {
                     String newToken = refreshAccessToken(empKakao);
                     if (newToken != null) {
                         empKakao.setAccessToken(newToken);
-                        sendMessage(empKakao, title, content);
+                        sendMessage(empKakao, title, content, pageUrl);
                     }
                 } catch (Exception ex) {
                     log.warn("카카오 메시지 최종 실패 [empno={}]: {}", empKakao.getEmpno(), ex.getMessage());
@@ -117,13 +119,14 @@ public class KakaoService {
         }
     }
 
-    private void sendMessage(EmpKakao empKakao, String title, String content) throws Exception {
+    private void sendMessage(EmpKakao empKakao, String title, String content, String pageUrl) throws Exception {
+        String url = (pageUrl != null && !pageUrl.isBlank()) ? pageUrl : APP_URL;
         Map<String, Object> template = Map.of(
                 "object_type", "text",
-                "text", "📢 [공지사항]\n\n" + title + "\n\n" + content,
+                "text", title + "\n\n" + content + "\n\n👉 " + url,
                 "link", Map.of(
-                        "web_url", "https://emp-management-react.vercel.app",
-                        "mobile_web_url", "https://emp-management-react.vercel.app"
+                        "web_url", url,
+                        "mobile_web_url", url
                 )
         );
 

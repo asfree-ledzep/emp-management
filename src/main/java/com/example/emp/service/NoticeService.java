@@ -24,7 +24,11 @@ public class NoticeService {
     public void create(Notice notice) {
         noticeMapper.insert(notice);
         // 카카오 연동된 사원에게 메시지 발송
-        kakaoService.sendMessageToAll(notice.getTitle(), notice.getContent());
+        kakaoService.sendMessageToAll(
+            "📢 [공지사항] " + notice.getTitle(),
+            notice.getContent(),
+            "https://emp-management-react.vercel.app/?page=notice"
+        );
     }
 
     public void delete(Long id) {
