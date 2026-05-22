@@ -382,7 +382,7 @@ public class ExpenseService {
                 Row row = sheet.createRow(rowNum++);
                 row.createCell(0).setCellValue(e.getEmpno() != null ? e.getEmpno() : 0);
                 row.createCell(1).setCellValue(e.getEname() != null ? e.getEname() : "");
-                row.createCell(2).setCellValue(e.getExpenseDate() != null ? e.getExpenseDate().toString() : "");
+                row.createCell(2).setCellValue(e.getExpenseDate() != null ? e.getExpenseDate() : "");
                 row.createCell(3).setCellValue(e.getAmount() != null ? e.getAmount() : 0);
                 row.createCell(4).setCellValue(e.getCategory() != null ? e.getCategory() : "");
                 row.createCell(5).setCellValue(e.getDescription() != null ? e.getDescription() : "");

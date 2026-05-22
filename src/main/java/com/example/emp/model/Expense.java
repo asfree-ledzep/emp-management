@@ -2,7 +2,6 @@ package com.example.emp.model;
 
 import lombok.Getter;
 import lombok.Setter;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter @Setter
@@ -11,7 +10,7 @@ public class Expense {
     private Integer empno;
     private String ename;          // EMP 조인용
     private String receiptUrl;
-    private LocalDate expenseDate;
+    private String expenseDate;    // "YYYY-MM-DD" 문자열 (TO_DATE 변환용)
     private Double amount;
     private String description;
     private String category;       // 식비/교통비/숙박비/기타
