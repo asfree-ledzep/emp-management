@@ -80,37 +80,60 @@ public class ExpenseService {
         }
     }
 
-    // 금액 파싱 (한국 영수증 패턴 우선순위 순)
+    // 금액 파싱 — 키워드+금액 패턴 (우선순위 순)
     private static final Pattern[] AMOUNT_PATTERNS = {
         Pattern.compile("합\\s*계\\s*[:\\s：]?\\s*([\\d,]+)"),
         Pattern.compile("총\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
+        Pattern.compile("소\\s*계\\s*[:\\s：]?\\s*([\\d,]+)"),
         Pattern.compile("결\\s*제\\s*금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
+        Pattern.compile("실\\s*결\\s*제\\s*[:\\s：]?\\s*([\\d,]+)"),
         Pattern.compile("승\\s*인\\s*금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
         Pattern.compile("청\\s*구\\s*금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
         Pattern.compile("받\\s*을\\s*금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
-        Pattern.compile("TOTAL\\s*[:\\s]?\\s*([\\d,]+)"),
+        Pattern.compile("지\\s*불\\s*금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
+        Pattern.compile("금\\s*액\\s*[:\\s：]?\\s*([\\d,]+)"),
+        Pattern.compile("[Tt][Oo][Tt][Aa][Ll]\\s*[:\\s]?\\s*([\\d,]+)"),
+        Pattern.compile("[Aa][Mm][Oo][Uu][Nn][Tt]\\s*[:\\s]?\\s*([\\d,]+)"),
     };
 
     private Double parseAmount(String text) {
         if (text == null || text.isBlank()) return null;
+
+        // 정규화: 탭·연속 공백을 단일 공백으로 (개행은 유지)
+        String norm = text.replaceAll("[ \\t]+", " ").trim();
+
+        // 1순위: 키워드 패턴 매칭
         for (Pattern p : AMOUNT_PATTERNS) {
-            Matcher m = p.matcher(text);
+            Matcher m = p.matcher(norm);
             if (m.find()) {
-                try { return Double.parseDouble(m.group(1).replace(",", "")); }
-                catch (NumberFormatException ignored) {}
+                try {
+                    double v = Double.parseDouble(m.group(1).replace(",", ""));
+                    if (v >= 100) return v;
+                } catch (NumberFormatException ignored) {}
             }
         }
-        // 보조: 숫자+원 패턴 중 최댓값
-        Pattern wonPattern = Pattern.compile("([\\d,]+)\\s*원");
-        Matcher wonMatcher = wonPattern.matcher(text);
-        double max = 0;
-        while (wonMatcher.find()) {
+
+        // 2순위: "숫자원" 패턴 중 최댓값 (예: 15,000원 / 15000원)
+        Matcher wonM = Pattern.compile("([\\d,]+)\\s*원").matcher(norm);
+        double maxWon = 0;
+        while (wonM.find()) {
             try {
-                double v = Double.parseDouble(wonMatcher.group(1).replace(",", ""));
-                if (v > max) max = v;
+                double v = Double.parseDouble(wonM.group(1).replace(",", ""));
+                if (v > maxWon && v >= 100) maxWon = v;
             } catch (NumberFormatException ignored) {}
         }
-        return max > 0 ? max : null;
+        if (maxWon >= 100) return maxWon;
+
+        // 3순위: 1,000 이상인 숫자 중 최댓값 (최후 폴백)
+        Matcher numM = Pattern.compile("([\\d,]{4,})").matcher(norm);
+        double maxNum = 0;
+        while (numM.find()) {
+            try {
+                double v = Double.parseDouble(numM.group(1).replace(",", ""));
+                if (v > maxNum && v >= 1000) maxNum = v;
+            } catch (NumberFormatException ignored) {}
+        }
+        return maxNum >= 1000 ? maxNum : null;
     }
 
     // 날짜 파싱
@@ -118,10 +141,11 @@ public class ExpenseService {
         if (text == null || text.isBlank()) return LocalDate.now().toString();
 
         // yyyy-MM-dd / yyyy/MM/dd / yyyy.MM.dd
-        Matcher m1 = Pattern.compile("(\\d{4})[-/\\.](\\d{2})[-/\\.](\\d{2})").matcher(text);
-        if (m1.find()) return m1.group(1) + "-" + m1.group(2) + "-" + m1.group(3);
+        Matcher m1 = Pattern.compile("(202[0-9])[-/\\.](\\d{1,2})[-/\\.](\\d{1,2})").matcher(text);
+        if (m1.find()) return String.format("%s-%02d-%02d",
+                m1.group(1), Integer.parseInt(m1.group(2)), Integer.parseInt(m1.group(3)));
 
-        // yyyy년 MM월 dd일
+        // yyyy년 M월 d일
         Matcher m2 = Pattern.compile("(\\d{4})년\\s*(\\d{1,2})월\\s*(\\d{1,2})일").matcher(text);
         if (m2.find()) return String.format("%s-%02d-%02d",
                 m2.group(1), Integer.parseInt(m2.group(2)), Integer.parseInt(m2.group(3)));
