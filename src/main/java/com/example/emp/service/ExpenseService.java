@@ -206,25 +206,55 @@ public class ExpenseService {
         return maxNum >= 1000 ? maxNum : null;
     }
 
-    // 날짜 파싱
+    // 날짜 파싱 — 유효 범위 검증 후 반환, 실패 시 오늘 날짜 폴백
     private String parseDate(String text) {
         if (text == null || text.isBlank()) return LocalDate.now().toString();
 
-        // yyyy-MM-dd / yyyy/MM/dd / yyyy.MM.dd
-        Matcher m1 = Pattern.compile("(202[0-9])[-/\\.](\\d{1,2})[-/\\.](\\d{1,2})").matcher(text);
-        if (m1.find()) return String.format("%s-%02d-%02d",
-                m1.group(1), Integer.parseInt(m1.group(2)), Integer.parseInt(m1.group(3)));
-
-        // yyyy년 M월 d일
+        // 1순위: yyyy년 M월 d일 (가장 명확)
         Matcher m2 = Pattern.compile("(\\d{4})년\\s*(\\d{1,2})월\\s*(\\d{1,2})일").matcher(text);
-        if (m2.find()) return String.format("%s-%02d-%02d",
-                m2.group(1), Integer.parseInt(m2.group(2)), Integer.parseInt(m2.group(3)));
+        while (m2.find()) {
+            int year  = Integer.parseInt(m2.group(1));
+            int month = Integer.parseInt(m2.group(2));
+            int day   = Integer.parseInt(m2.group(3));
+            if (year >= 2000 && year <= 2030 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                String c = String.format("%04d-%02d-%02d", year, month, day);
+                if (isValidDate(c)) return c;
+            }
+        }
 
-        // yy-MM-dd
+        // 2순위: yyyy-MM-dd / yyyy/MM/dd / yyyy.MM.dd (2010~2029)
+        Matcher m1 = Pattern.compile("(20[12][0-9])[-/\\.](\\d{1,2})[-/\\.](\\d{1,2})").matcher(text);
+        while (m1.find()) {
+            int month = Integer.parseInt(m1.group(2));
+            int day   = Integer.parseInt(m1.group(3));
+            if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                String c = String.format("%s-%02d-%02d", m1.group(1), month, day);
+                if (isValidDate(c)) return c;
+            }
+        }
+
+        // 3순위: yy-MM-dd / yy/MM/dd / yy.MM.dd
         Matcher m3 = Pattern.compile("(\\d{2})[-/\\.](\\d{2})[-/\\.](\\d{2})").matcher(text);
-        if (m3.find()) return "20" + m3.group(1) + "-" + m3.group(2) + "-" + m3.group(3);
+        while (m3.find()) {
+            int month = Integer.parseInt(m3.group(2));
+            int day   = Integer.parseInt(m3.group(3));
+            if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                String c = "20" + m3.group(1) + "-" + m3.group(2) + "-" + m3.group(3);
+                if (isValidDate(c)) return c;
+            }
+        }
 
         return LocalDate.now().toString();
+    }
+
+    // 날짜 문자열 유효성 검사 (LocalDate.parse로 실제 검증)
+    private boolean isValidDate(String dateStr) {
+        try {
+            LocalDate.parse(dateStr);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // ─────────────────────────────────────────
