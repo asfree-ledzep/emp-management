@@ -16,6 +16,7 @@
         <result property="category"    column="CATEGORY"/>
         <result property="status"      column="STATUS"/>
         <result property="ocrRaw"      column="OCR_RAW"/>
+        <result property="ocrHash"     column="OCR_HASH"/>
         <result property="createdAt"   column="CREATED_AT"/>
         <result property="confirmedBy" column="CONFIRMED_BY"/>
         <result property="confirmedAt" column="CONFIRMED_AT"/>
@@ -47,15 +48,25 @@
     <!-- 지출 등록 -->
     <insert id="insertExpense" parameterType="com.example.emp.model.Expense">
         INSERT INTO EXPENSE (EXPENSE_ID, EMPNO, RECEIPT_URL, EXPENSE_DATE, AMOUNT,
-                             DESCRIPTION, CATEGORY, STATUS, OCR_RAW, CREATED_AT)
+                             DESCRIPTION, CATEGORY, STATUS, OCR_RAW, OCR_HASH, CREATED_AT)
         VALUES (EXPENSE_SEQ.NEXTVAL, #{empno}, #{receiptUrl},
                 TO_DATE(#{expenseDate}, 'YYYY-MM-DD'),
                 #{amount}, #{description}, #{category}, 'PENDING',
-                #{ocrRaw, jdbcType=CLOB}, SYSDATE)
+                #{ocrRaw, jdbcType=CLOB},
+                #{ocrHash, jdbcType=VARCHAR},
+                SYSDATE)
         <selectKey keyProperty="expenseId" resultType="long" order="AFTER">
             SELECT EXPENSE_SEQ.CURRVAL FROM DUAL
         </selectKey>
     </insert>
+
+    <!-- 중복 제출 확인 — 동일 사원의 동일 OCR 해시 존재 여부 -->
+    <select id="countByOcrHash" resultType="int">
+        SELECT COUNT(*)
+          FROM EXPENSE
+         WHERE EMPNO    = #{empno}
+           AND OCR_HASH = #{ocrHash}
+    </select>
 
     <!-- 사원별 지출 목록 -->
     <select id="findByEmpno" resultMap="expenseResultMap">

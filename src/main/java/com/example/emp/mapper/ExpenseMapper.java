@@ -16,6 +16,9 @@ public interface ExpenseMapper {
     void updateConfirm(@Param("expenseId") Long expenseId, @Param("confirmedBy") String confirmedBy);
     void deleteExpense(Long expenseId);
 
+    // 중복 제출 방지 — OCR 해시로 동일 영수증 확인
+    int countByOcrHash(@Param("empno") Integer empno, @Param("ocrHash") String ocrHash);
+
     // 월별 통계 생성 (DELETE + INSERT)
     void deleteMonthlyStats(@Param("year") int year, @Param("month") int month);
     void insertMonthlyStats(@Param("year") int year, @Param("month") int month);

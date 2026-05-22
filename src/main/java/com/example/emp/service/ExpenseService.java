@@ -17,6 +17,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.regex.*;
@@ -279,10 +281,46 @@ public class ExpenseService {
     }
 
     // ─────────────────────────────────────────
+    // OCR 해시 생성
+    // ─────────────────────────────────────────
+    /**
+     * OCR 원문 → SHA-256 해시 (64자 hex 문자열)
+     * 같은 영수증 = 같은 OCR 텍스트 = 같은 해시 → 중복 감지에 활용
+     */
+    public String computeOcrHash(String ocrRaw) {
+        if (ocrRaw == null || ocrRaw.isBlank()) return null;
+        try {
+            // 공백/개행 정규화 후 해시 → 약간의 OCR 변동 흡수
+            String normalized = ocrRaw.replaceAll("\\s+", " ").trim();
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(normalized.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) {
+            log.warn("[OCR Hash] 해시 계산 실패: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    // ─────────────────────────────────────────
     // CRUD
     // ─────────────────────────────────────────
     public void create(Expense expense) {
+        // OCR 해시 세팅 (제출 시 ocrRaw가 있으면 해시 계산)
+        if (expense.getOcrHash() == null && expense.getOcrRaw() != null) {
+            expense.setOcrHash(computeOcrHash(expense.getOcrRaw()));
+        }
         expenseMapper.insertExpense(expense);
+    }
+
+    /**
+     * 중복 제출 확인
+     * @return true = 이미 제출된 영수증
+     */
+    public boolean isDuplicate(Integer empno, String ocrHash) {
+        if (ocrHash == null || ocrHash.isBlank()) return false;
+        return expenseMapper.countByOcrHash(empno, ocrHash) > 0;
     }
 
     public List<Expense> findByEmpno(Integer empno) {

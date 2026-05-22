@@ -41,12 +41,23 @@ public class ExpenseController {
         }
     }
 
-    // 2. 지출 등록 (DB 저장)
+    // 2. 지출 등록 (DB 저장) — 중복 영수증 409 반환
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Expense expense, Authentication auth) {
         try {
             Integer empno = Integer.parseInt(auth.getName());
             expense.setEmpno(empno);
+
+            // 중복 제출 확인: OCR 원문이 있으면 해시로 검사
+            if (expense.getOcrRaw() != null && !expense.getOcrRaw().isBlank()) {
+                String hash = expenseService.computeOcrHash(expense.getOcrRaw());
+                expense.setOcrHash(hash);
+                if (expenseService.isDuplicate(empno, hash)) {
+                    return ResponseEntity.status(409)
+                            .body(Map.of("error", "이미 제출된 영수증입니다."));
+                }
+            }
+
             expenseService.create(expense);
             return ResponseEntity.ok(Map.of("message", "지출이 등록되었습니다."));
         } catch (Exception e) {
