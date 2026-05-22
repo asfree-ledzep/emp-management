@@ -15,6 +15,9 @@ public class SurveyService {
     @Autowired
     private SurveyMapper surveyMapper;
 
+    @Autowired
+    private KakaoService kakaoService;
+
     // 설문 목록
     public List<Survey> findAll() {
         return surveyMapper.findAll();
@@ -48,6 +51,11 @@ public class SurveyService {
                 }
             }
         }
+        // 카카오톡 알림 발송
+        String content = (survey.getDescription() != null && !survey.getDescription().isBlank())
+                ? survey.getDescription() : "지금 바로 참여해보세요!";
+        kakaoService.sendMessageToAll("[설문조사] " + survey.getTitle(), content);
+
         return survey;
     }
 
