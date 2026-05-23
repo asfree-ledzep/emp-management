@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.EmpAddrMapper">
+
+    <resultMap id="empAddrResultMap" type="com.example.emp.model.EmpAddr">
+        <id     property="empno"      column="EMPNO"/>
+        <result property="zipcode"    column="ZIPCODE"/>
+        <result property="address"    column="ADDRESS"/>
+        <result property="addrDetail" column="ADDR_DETAIL"/>
+    </resultMap>
+
+    <select id="findByEmpno" parameterType="int" resultMap="empAddrResultMap">
+        SELECT EMPNO, ZIPCODE, ADDRESS, ADDR_DETAIL
+          FROM EMP_ADDR
+         WHERE EMPNO = #{empno}
+    </select>
+
+    <!-- MERGE로 INSERT / UPDATE 자동 분기 -->
+    <insert id="upsert" parameterType="com.example.emp.model.EmpAddr">
+        MERGE INTO EMP_ADDR dst
+        USING (SELECT #{empno} AS EMPNO FROM DUAL) src
+           ON (dst.EMPNO = src.EMPNO)
+        WHEN MATCHED THEN
+            UPDATE SET
+                ZIPCODE     = #{zipcode,jdbcType=VARCHAR},
+                ADDRESS     = #{address,jdbcType=VARCHAR},
+                ADDR_DETAIL = #{addrDetail,jdbcType=VARCHAR}
+        WHEN NOT MATCHED THEN
+            INSERT (EMPNO, ZIPCODE, ADDRESS, ADDR_DETAIL)
+            VALUES (#{empno}, #{zipcode,jdbcType=VARCHAR},
+                    #{address,jdbcType=VARCHAR}, #{addrDetail,jdbcType=VARCHAR})
+    </insert>
+
+    <delete id="deleteByEmpno" parameterType="int">
+        DELETE FROM EMP_ADDR WHERE EMPNO = #{empno}
+    </delete>
+
+</mapper>

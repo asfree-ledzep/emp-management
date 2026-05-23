@@ -1,6 +1,8 @@
 package com.example.emp.controller;
 
 import com.example.emp.model.Emp;
+import com.example.emp.model.EmpAddr;
+import com.example.emp.service.EmpAddrService;
 import com.example.emp.service.EmpService;
 import com.example.emp.service.ExcelService;
 import com.example.emp.service.S3Service;
@@ -21,9 +23,10 @@ import java.util.Map;
 @RequestMapping("/api/emps")
 public class EmpController {
 
-    @Autowired private EmpService   empService;
-    @Autowired private S3Service    s3Service;
-    @Autowired private ExcelService excelService;
+    @Autowired private EmpService     empService;
+    @Autowired private S3Service      s3Service;
+    @Autowired private ExcelService   excelService;
+    @Autowired private EmpAddrService empAddrService;
 
     // ── 권한 헬퍼 ──────────────────────────────────────────────
     private boolean isAdmin() {
@@ -124,6 +127,25 @@ public class EmpController {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "파일 처리 실패: " + e.getMessage()));
         }
+    }
+
+    // ── 주소 조회: 관리자 or 본인 ───────────────────────────────
+    @GetMapping("/{empno}/addr")
+    public ResponseEntity<EmpAddr> getAddr(@PathVariable Integer empno) {
+        if (!isAdmin() && !empno.equals(loginEmpno())) return ResponseEntity.status(403).build();
+        EmpAddr addr = empAddrService.getByEmpno(empno);
+        if (addr == null) addr = EmpAddr.builder().empno(empno).zipcode("").address("").addrDetail("").build();
+        return ResponseEntity.ok(addr);
+    }
+
+    // ── 주소 저장: 관리자 or 본인 ───────────────────────────────
+    @PutMapping("/{empno}/addr")
+    public ResponseEntity<Void> saveAddr(@PathVariable Integer empno,
+                                         @RequestBody EmpAddr addr) {
+        if (!isAdmin() && !empno.equals(loginEmpno())) return ResponseEntity.status(403).build();
+        addr.setEmpno(empno);
+        empAddrService.save(addr);
+        return ResponseEntity.ok().build();
     }
 
     // ── 사진 업로드: 관리자 or 본인 ─────────────────────────────
