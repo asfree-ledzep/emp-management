@@ -22,7 +22,7 @@ public class FaqService {
 
     // 휴무일 관련 키워드
     private static final Set<String> HOLIDAY_KEYWORDS =
-        Set.of("휴무일", "휴무", "공휴일", "쉬는날", "쉬는 날", "휴일", "빨간날", "법정공휴일");
+        Set.of("휴무일", "휴무", "공휴일", "쉬는날", "쉬는 날", "휴일", "빨간날", "법정공휴일", "법정 공휴일");
 
     public List<Faq> getAll() {
         return faqMapper.findAll();
