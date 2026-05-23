@@ -100,10 +100,17 @@ public class FaqService {
         } else {
             StringBuilder sb = new StringBuilder(monthLabel + " 공휴일 " + holidays.size() + "건\n\n");
             for (Holiday h : holidays) {
-                // holidayDate: "YYYY-MM-DD" → "M/D"
-                String[] parts = h.getHolidayDate().split("-");
-                String mmdd = Integer.parseInt(parts[1]) + "/" + Integer.parseInt(parts[2]);
-                sb.append("📅 ").append(mmdd).append("  ").append(h.getHolidayName()).append("\n");
+                String start = toMD(h.getHolidayDate());
+                String end   = toMD(h.getHolidayEndDate());
+                int    days  = calcDays(h.getHolidayDate(), h.getHolidayEndDate());
+                if (end == null || start.equals(end)) {
+                    sb.append("📅 ").append(start)
+                      .append("  ").append(h.getHolidayName()).append(" (1일)\n");
+                } else {
+                    sb.append("📅 ").append(start).append(" ~ ").append(end)
+                      .append("  ").append(h.getHolidayName())
+                      .append(" (").append(days).append("일간)\n");
+                }
             }
             answer = sb.toString().trim();
         }
@@ -114,6 +121,23 @@ public class FaqService {
         faq.setQuestion(monthLabel + " 공휴일");
         faq.setAnswer(answer);
         return faq;
+    }
+
+    // "YYYY-MM-DD" → "M/D"
+    private String toMD(String dateStr) {
+        if (dateStr == null || dateStr.isBlank()) return null;
+        String[] p = dateStr.split("-");
+        return Integer.parseInt(p[1]) + "/" + Integer.parseInt(p[2]);
+    }
+
+    // 시작일~종료일 일수 계산
+    private int calcDays(String start, String end) {
+        if (start == null || end == null) return 1;
+        try {
+            LocalDate s = LocalDate.parse(start);
+            LocalDate e = LocalDate.parse(end);
+            return (int) java.time.temporal.ChronoUnit.DAYS.between(s, e) + 1;
+        } catch (Exception ex) { return 1; }
     }
 
     // 질문 텍스트에서 월 파싱
