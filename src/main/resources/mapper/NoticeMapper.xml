@@ -10,6 +10,15 @@
         <result property="content"    column="CONTENT"/>
         <result property="createdBy"  column="CREATED_BY"/>
         <result property="createdAt"  column="CREATED_AT"/>
+        <result property="readCount"  column="READ_COUNT"/>
+        <result property="isRead"     column="IS_READ" javaType="java.lang.Boolean"/>
+    </resultMap>
+
+    <resultMap id="noticeReadResultMap" type="com.example.emp.model.NoticeRead">
+        <result property="noticeId" column="NOTICE_ID"/>
+        <result property="empno"    column="EMPNO"/>
+        <result property="ename"    column="ENAME"/>
+        <result property="readAt"   column="READ_AT"/>
     </resultMap>
 
     <select id="findAll" resultMap="noticeResultMap">
@@ -42,5 +51,61 @@
     <delete id="delete" parameterType="long">
         DELETE FROM NOTICE WHERE NOTICE_ID = #{noticeId}
     </delete>
+
+    <!-- 관리자용: 읽은 사원 수 포함 -->
+    <select id="findAllWithReadCount" resultMap="noticeResultMap">
+        SELECT n.NOTICE_ID, n.TITLE, n.CONTENT, n.CREATED_BY, n.CREATED_AT,
+               (SELECT COUNT(*) FROM NOTICE_READ r WHERE r.NOTICE_ID = n.NOTICE_ID) AS READ_COUNT
+          FROM NOTICE n
+         ORDER BY n.NOTICE_ID DESC
+    </select>
+
+    <!-- 사원용: 본인 읽음 여부 포함 -->
+    <select id="findAllForUser" resultMap="noticeResultMap">
+        SELECT n.NOTICE_ID, n.TITLE, n.CONTENT, n.CREATED_BY, n.CREATED_AT,
+               CASE WHEN EXISTS (
+                   SELECT 1 FROM NOTICE_READ r
+                    WHERE r.NOTICE_ID = n.NOTICE_ID AND r.EMPNO = #{empno}
+               ) THEN 1 ELSE 0 END AS IS_READ
+          FROM NOTICE n
+         ORDER BY n.NOTICE_ID DESC
+    </select>
+
+    <!-- 읽음 처리 (MERGE: 중복 무시) -->
+    <insert id="markRead">
+        MERGE INTO NOTICE_READ nr
+        USING DUAL
+           ON (nr.NOTICE_ID = #{noticeId} AND nr.EMPNO = #{empno})
+        WHEN NOT MATCHED THEN
+            INSERT (NOTICE_ID, EMPNO, READ_AT)
+            VALUES (#{noticeId}, #{empno}, SYSDATE)
+    </insert>
+
+    <!-- 공지별 읽은 사원 목록 -->
+    <select id="findReaders" parameterType="long" resultMap="noticeReadResultMap">
+        SELECT nr.NOTICE_ID, nr.EMPNO, e.ENAME, nr.READ_AT
+          FROM NOTICE_READ nr
+          JOIN EMP e ON e.EMPNO = nr.EMPNO
+         WHERE nr.NOTICE_ID = #{noticeId}
+         ORDER BY nr.READ_AT
+    </select>
+
+    <!-- 공지별 안 읽은 사원 목록 -->
+    <select id="findUnreaders" parameterType="long" resultMap="noticeReadResultMap">
+        SELECT 0 AS NOTICE_ID, e.EMPNO, e.ENAME, NULL AS READ_AT
+          FROM EMP e
+         WHERE e.EMPNO NOT IN (
+               SELECT nr.EMPNO FROM NOTICE_READ nr WHERE nr.NOTICE_ID = #{noticeId}
+         )
+         ORDER BY e.EMPNO
+    </select>
+
+    <!-- 사원의 미읽음 공지 수 -->
+    <select id="countUnread" resultType="int">
+        SELECT COUNT(*) FROM NOTICE n
+         WHERE n.NOTICE_ID NOT IN (
+               SELECT nr.NOTICE_ID FROM NOTICE_READ nr WHERE nr.EMPNO = #{empno}
+         )
+    </select>
 
 </mapper>

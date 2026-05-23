@@ -13,4 +13,10 @@ public class Notice {
     private String content;
     private String createdBy;
     private LocalDateTime createdAt;
+
+    // 관리자 응답: 읽은 사원 수
+    private Integer readCount;
+
+    // 사원 응답: 본인 읽음 여부
+    private Boolean isRead;
 }
