@@ -5,9 +5,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,11 +19,19 @@ public class PublicHolidayService {
     @Value("${public.holiday.api.key}")
     private String apiKey;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String BASE_URL =
             "http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo";
+
+    public PublicHolidayService() {
+        restTemplate = new RestTemplate();
+        // UTF-8 인코딩 명시 (기본값 ISO-8859-1로 한글 깨짐 방지)
+        restTemplate.getMessageConverters().stream()
+                .filter(c -> c instanceof StringHttpMessageConverter)
+                .forEach(c -> ((StringHttpMessageConverter) c).setDefaultCharset(StandardCharsets.UTF_8));
+    }
 
     public List<Holiday> getHolidays(int year, int month) {
         String url = BASE_URL
@@ -32,16 +42,16 @@ public class PublicHolidayService {
                 + "&numOfRows=50";
 
         try {
-            // Accept: application/json 헤더 명시
             HttpHeaders headers = new HttpHeaders();
-            headers.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            headers.setAcceptCharset(List.of(StandardCharsets.UTF_8));
             HttpEntity<Void> entity = new HttpEntity<>(headers);
 
             ResponseEntity<String> response =
                     restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
             String body = response.getBody();
-            if (body == null) return List.of();
+            if (body == null || body.isBlank()) return List.of();
 
             JsonNode root = objectMapper.readTree(body);
             JsonNode item = root.path("response").path("body").path("items").path("item");
@@ -49,7 +59,7 @@ public class PublicHolidayService {
             List<Holiday> result = new ArrayList<>();
             if (item.isArray()) {
                 item.forEach(n -> result.add(toHoliday(n)));
-            } else if (!item.isMissingNode() && !item.isNull() && item.isObject()) {
+            } else if (item.isObject()) {
                 result.add(toHoliday(item));
             }
             return result;
