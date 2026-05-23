@@ -4,13 +4,17 @@ import com.example.emp.model.Emp;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
+import java.util.*;
+import java.util.regex.Pattern;
 
 @Service
 public class ExcelService {
@@ -23,6 +27,126 @@ public class ExcelService {
     private static final String[] HEADERS =
             {"사번", "사원명", "직책", "상사사번", "입사일", "급여", "커미션", "부서번호"};
 
+    // ── 엑셀 일괄 업로드 → DB 등록 ──────────────────────────────
+    public Map<String, Object> importFromExcel(MultipartFile file) throws IOException {
+        List<Emp>   parsed  = new ArrayList<>();
+        List<String> parseErrors = new ArrayList<>();
+
+        try (Workbook wb = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = wb.getSheetAt(0);
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null || isBlankRow(row)) continue;
+                try {
+                    Emp emp = rowToEmp(row);
+                    if (emp != null) parsed.add(emp);
+                } catch (Exception e) {
+                    parseErrors.add((i + 1) + "행: " + e.getMessage());
+                }
+            }
+        }
+
+        int success = 0;
+        List<String> failDetails = new ArrayList<>(parseErrors);
+        for (Emp emp : parsed) {
+            try {
+                empService.create(emp);
+                success++;
+            } catch (DuplicateKeyException e) {
+                failDetails.add("사번 " + emp.getEmpno() + " (" + emp.getEname() + ") — 중복");
+            } catch (Exception e) {
+                failDetails.add("사번 " + emp.getEmpno() + " — " + e.getMessage());
+            }
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("total",   parsed.size());
+        result.put("success", success);
+        result.put("failed",  parsed.size() - success + parseErrors.size());
+        result.put("errors",  failDetails);
+        return result;
+    }
+
+    // 빈 행 여부 확인
+    private boolean isBlankRow(Row row) {
+        for (int c = 0; c < 8; c++) {
+            Cell cell = row.getCell(c);
+            if (cell != null && cell.getCellType() != CellType.BLANK) return false;
+        }
+        return true;
+    }
+
+    // 행 → Emp 변환
+    private Emp rowToEmp(Row row) {
+        Integer empno = getCellInt(row.getCell(0));
+        if (empno == null) throw new IllegalArgumentException("사번(A열) 누락");
+        String  ename    = getCellString(row.getCell(1));
+        String  job      = getCellString(row.getCell(2));
+        Integer mgr      = getCellInt(row.getCell(3));
+        LocalDate hiredate = getCellDate(row.getCell(4));
+        Double  sal      = getCellDouble(row.getCell(5));
+        Double  comm     = getCellDouble(row.getCell(6));
+        Integer deptno   = getCellInt(row.getCell(7));
+
+        return Emp.builder()
+                .empno(empno)
+                .ename(ename.isBlank()  ? null : ename)
+                .job(job.isBlank()      ? null : job)
+                .mgr(mgr != null && mgr == 0 ? null : mgr)
+                .hiredate(hiredate)
+                .sal(sal)
+                .comm(comm != null && comm == 0 ? null : comm)
+                .deptno(deptno)
+                .build();
+    }
+
+    private static final Pattern DATE_SEP = Pattern.compile("[./]");
+
+    private String getCellString(Cell cell) {
+        if (cell == null) return "";
+        return switch (cell.getCellType()) {
+            case STRING  -> cell.getStringCellValue().trim();
+            case NUMERIC -> DateUtil.isCellDateFormatted(cell)
+                    ? cell.getLocalDateTimeCellValue().toLocalDate().toString()
+                    : String.valueOf((long) cell.getNumericCellValue());
+            case FORMULA -> cell.getCachedFormulaResultType() == CellType.NUMERIC
+                    ? String.valueOf((long) cell.getNumericCellValue())
+                    : cell.getStringCellValue().trim();
+            default -> "";
+        };
+    }
+
+    private Double getCellDouble(Cell cell) {
+        if (cell == null) return null;
+        if (cell.getCellType() == CellType.NUMERIC) return cell.getNumericCellValue();
+        if (cell.getCellType() == CellType.STRING) {
+            String s = cell.getStringCellValue().trim().replace(",", "");
+            if (s.isBlank()) return null;
+            try { return Double.parseDouble(s); } catch (NumberFormatException e) { return null; }
+        }
+        return null;
+    }
+
+    private Integer getCellInt(Cell cell) {
+        Double d = getCellDouble(cell);
+        return (d != null && d != 0) ? d.intValue() : null;
+    }
+
+    private LocalDate getCellDate(Cell cell) {
+        if (cell == null) return null;
+        try {
+            if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+                return cell.getLocalDateTimeCellValue().toLocalDate();
+            }
+            String s = getCellString(cell).trim();
+            if (s.isBlank()) return null;
+            return LocalDate.parse(DATE_SEP.matcher(s).replaceAll("-"));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // ── 엑셀 내보내기 ────────────────────────────────────────────
     public String exportToS3() throws IOException {
         List<Emp> emps = empService.getAll();
         byte[] bytes = buildExcel(emps);

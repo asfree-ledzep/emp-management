@@ -154,21 +154,23 @@ public class ExpenseService {
     // 금액 최대 한도: 1억원 초과는 주문번호/계좌번호 등으로 간주
     private static final double MAX_AMOUNT = 100_000_000.0;
 
-    // 금액 파싱 — 키워드 뒤 비숫자 최대 30자 허용 (줄바꿈, 공백, 콜론 등)
+    // 키워드 뒤 공백·콜론 등 비숫자 최대 60자 허용, 개행도 허용 ([^\\d]{0,60})
     // [\\d,.] : 콤마(5,000)와 점(5.000) 천단위 구분자 모두 허용
     private static final Pattern[] AMOUNT_PATTERNS = {
-        Pattern.compile("합\\s*계[^\\d\\n]{0,30}([\\d,.]+)"),
-        Pattern.compile("총\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
-        Pattern.compile("소\\s*계[^\\d\\n]{0,30}([\\d,.]+)"),
-        Pattern.compile("청\\s*구\\s*금\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
-        Pattern.compile("결\\s*제\\s*금\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
-        Pattern.compile("실\\s*결\\s*제[^\\d\\n]{0,30}([\\d,.]+)"),
-        Pattern.compile("승\\s*인\\s*금\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
-        Pattern.compile("판\\s*매\\s*금\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
-        Pattern.compile("받\\s*을\\s*금\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
-        Pattern.compile("지\\s*불\\s*금\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
-        Pattern.compile("청\\s*구\\s*액[^\\d\\n]{0,30}([\\d,.]+)"),
-        Pattern.compile("금\\s*액[^\\d\\n]{0,20}([\\d,.]+)"),
+        Pattern.compile("합\\s*계[^\\d]{0,60}([\\d,.]+)"),
+        Pattern.compile("총\\s*액[^\\d]{0,60}([\\d,.]+)"),
+        Pattern.compile("소\\s*계[^\\d]{0,60}([\\d,.]+)"),
+        Pattern.compile("총\\s*구\\s*매\\s*액[^\\d]{0,60}([\\d,.]+)"),   // CU·GS25 등
+        Pattern.compile("구\\s*매\\s*액[^\\d]{0,60}([\\d,.]+)"),
+        Pattern.compile("청\\s*구\\s*금\\s*액[^\\d]{0,60}([\\d,.]+)"),
+        Pattern.compile("결\\s*제\\s*금\\s*액[^\\d]{0,60}([\\d,.]+)"),
+        Pattern.compile("실\\s*결\\s*제[^\\d]{0,60}([\\d,.]+)"),
+        Pattern.compile("승\\s*인\\s*금\\s*액[^\\d]{0,60}([\\d,.]+)"),
+        Pattern.compile("판\\s*매\\s*금\\s*액[^\\d]{0,60}([\\d,.]+)"),
+        Pattern.compile("받\\s*을\\s*금\\s*액[^\\d]{0,60}([\\d,.]+)"),
+        Pattern.compile("지\\s*불\\s*금\\s*액[^\\d]{0,60}([\\d,.]+)"),
+        Pattern.compile("청\\s*구\\s*액[^\\d]{0,60}([\\d,.]+)"),
+        Pattern.compile("금\\s*액[^\\d]{0,60}([\\d,.]+)"),
         // ₩ / W 기호 패턴 (예: ₩ 575,000 / W575,000)
         Pattern.compile("[₩W]\\s*([\\d,.]+)"),
         Pattern.compile("[Tt][Oo][Tt][Aa][Ll][^\\d]{0,10}([\\d,.]+)"),
@@ -187,7 +189,6 @@ public class ExpenseService {
      */
     private Double toAmountDoubleOrNull(String s) {
         if (s == null || s.isBlank()) return null;
-        // 날짜 패턴(yyyy.MM.dd / yy-MM-dd 등)이면 금액으로 사용 안 함
         if (DATE_LIKE.matcher(s).matches()) return null;
         try {
             return Double.parseDouble(s.replaceAll("[,.]", ""));
@@ -196,13 +197,33 @@ public class ExpenseService {
         }
     }
 
+    /**
+     * 영수증 텍스트에서 금액이 아닌 숫자(승인번호·카드번호·사업자번호 등)를 마스킹.
+     * 폴백 로직에서 이런 번호를 금액으로 오인하는 것을 방지한다.
+     */
+    private String maskNonAmountNumbers(String text) {
+        return text
+            // 승인번호: 30074848  → 줄 전체 제거
+            .replaceAll("승\\s*인\\s*번\\s*호[^\\n]*", "")
+            // 카드번호: 9436-4618-****-203*  → 줄 전체 제거
+            .replaceAll("카\\s*드\\s*번\\s*호[^\\n]*", "")
+            // 사업자등록번호: 8234900907  → 줄 전체 제거
+            .replaceAll("사\\s*업\\s*자\\s*등\\s*록\\s*번\\s*호[^\\n]*", "")
+            // TEL: 전화번호 제거
+            .replaceAll("[Tt][Ee][Ll][^\\n]*", "")
+            // POS-01 같은 POS 번호 제거
+            .replaceAll("POS[-\\s]?\\d+", "")
+            // 콤마 없는 7자리 이상 연속 숫자 제거 (승인번호·계좌번호·바코드 등)
+            .replaceAll("(?<![\\d,])\\d{7,}(?![\\d,])", "");
+    }
+
     private Double parseAmount(String text) {
         if (text == null || text.isBlank()) return null;
 
         // 정규화: 탭·연속 공백을 단일 공백으로 (개행은 유지)
         String norm = text.replaceAll("[ \\t]+", " ").trim();
 
-        // 1순위: 키워드 패턴 매칭 (100 이상 1억 이하, 날짜 패턴 제외)
+        // 1순위: 키워드 패턴 매칭 — 원본 텍스트 사용 (100 이상 1억 이하)
         for (Pattern p : AMOUNT_PATTERNS) {
             Matcher m = p.matcher(norm);
             while (m.find()) {
@@ -211,8 +232,11 @@ public class ExpenseService {
             }
         }
 
-        // 2순위: "숫자원" 패턴 중 최댓값 (예: 15,000원 / 15.000원), 1억 이하
-        Matcher wonM = Pattern.compile("([\\d,.]+)\\s*원").matcher(norm);
+        // 비금액 숫자 마스킹 후 2·3순위 적용
+        String masked = maskNonAmountNumbers(norm);
+
+        // 2순위: "숫자원" 패턴 중 최댓값 (예: 15,000원), 1억 이하
+        Matcher wonM = Pattern.compile("([\\d,.]+)\\s*원").matcher(masked);
         double maxWon = 0;
         while (wonM.find()) {
             Double v = toAmountDoubleOrNull(wonM.group(1));
@@ -220,12 +244,21 @@ public class ExpenseService {
         }
         if (maxWon >= 100) return maxWon;
 
-        // 3순위: 최후 폴백 — 1,000 이상 1억 이하 숫자 중 최댓값 (날짜 패턴 자동 제외)
-        Matcher numM = Pattern.compile("([\\d,.]{4,})").matcher(norm);
+        // 3순위: 천단위 콤마가 있는 숫자 최댓값 (예: 2,000 / 15,000)
+        Matcher commaM = Pattern.compile("(\\d{1,3}(?:,\\d{3})+)").matcher(masked);
+        double maxComma = 0;
+        while (commaM.find()) {
+            Double v = toAmountDoubleOrNull(commaM.group(1));
+            if (v != null && v > maxComma && v >= 100 && v <= MAX_AMOUNT) maxComma = v;
+        }
+        if (maxComma >= 100) return maxComma;
+
+        // 4순위: 최후 폴백 — 1,000 이상 100만 이하 숫자 중 최댓값 (날짜·승인번호 자동 제외)
+        Matcher numM = Pattern.compile("([\\d,.]{4,})").matcher(masked);
         double maxNum = 0;
         while (numM.find()) {
             Double v = toAmountDoubleOrNull(numM.group(1));
-            if (v != null && v > maxNum && v >= 1000 && v <= MAX_AMOUNT) maxNum = v;
+            if (v != null && v > maxNum && v >= 1000 && v <= 1_000_000) maxNum = v;
         }
         return maxNum >= 1000 ? maxNum : null;
     }

@@ -112,6 +112,20 @@ public class EmpController {
         }
     }
 
+    // ── 엑셀 업로드 → 사원 일괄 등록: 관리자만 ─────────────────
+    @PostMapping("/import")
+    public ResponseEntity<?> importExcel(@RequestParam("file") MultipartFile file) {
+        if (!isAdmin()) return ResponseEntity.status(403).build();
+        if (file.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "파일이 비어있습니다."));
+        try {
+            Map<String, Object> result = excelService.importFromExcel(file);
+            return ResponseEntity.ok(result);
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "파일 처리 실패: " + e.getMessage()));
+        }
+    }
+
     // ── 사진 업로드: 관리자 or 본인 ─────────────────────────────
     @PostMapping("/{empno}/photo")
     public ResponseEntity<Map<String, String>> uploadPhoto(

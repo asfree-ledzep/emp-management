@@ -1,0 +1,17 @@
+# EB 배포 제외 목록 (.gitignore와 독립적으로 동작)
+# target/*.jar 는 포함되어야 하므로 여기서는 target/ 제외 안 함
+
+src/
+.git/
+.gitignore
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.vscode/
+*.log
+deploy.zip
+deploy-temp/
+.env
+.env.local
