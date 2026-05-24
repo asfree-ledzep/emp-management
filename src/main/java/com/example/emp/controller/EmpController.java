@@ -52,6 +52,20 @@ public class EmpController {
         return ResponseEntity.ok(empService.getAll());
     }
 
+    // ── 상사 선택용 목록: 인증된 모든 사용자 (사번·이름·직책만 반환) ──
+    @GetMapping("/mgr-list")
+    public ResponseEntity<?> getMgrList() {
+        return ResponseEntity.ok(
+            empService.getAll().stream()
+                .map(e -> Map.of(
+                    "empno", e.getEmpno(),
+                    "ename", e.getEname() != null ? e.getEname() : "",
+                    "job",   e.getJob()   != null ? e.getJob()   : ""
+                ))
+                .toList()
+        );
+    }
+
     // ── 단건 조회: 관리자 or 본인 ───────────────────────────────
     @GetMapping("/{empno}")
     public ResponseEntity<Emp> getById(@PathVariable Integer empno) {
