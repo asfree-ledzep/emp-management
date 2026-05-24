@@ -6,7 +6,9 @@ import lombok.Setter;
 @Getter @Setter
 public class LeaveBalance {
     private Integer empno;
-    private String  ename;   // 조인용
+    private String  ename;    // 조인용
+    private Integer deptno;   // 조인용
+    private String  dname;    // 조인용
     private Integer year;
     private Double totalDays;
     private Double usedDays;
