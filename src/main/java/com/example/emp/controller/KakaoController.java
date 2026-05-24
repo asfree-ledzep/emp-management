@@ -36,6 +36,23 @@ public class KakaoController {
         return ResponseEntity.ok(kakaoService.getStatus());
     }
 
+    // 특정 사원에게 카카오 테스트 메시지 발송 (관리자 전용)
+    @PostMapping("/test/{empno}")
+    public ResponseEntity<?> testMessage(@PathVariable Integer empno, Authentication auth) {
+        if (!isAdmin(auth)) return ResponseEntity.status(403).build();
+        try {
+            kakaoService.sendMessageToEmp(
+                empno,
+                "✅ 카카오 연동 테스트",
+                "HR 시스템과 카카오 연동이 정상적으로 작동하고 있습니다.",
+                "https://emp-management-react.vercel.app"
+            );
+            return ResponseEntity.ok(Map.of("message", "테스트 메시지 발송 완료", "empno", empno));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // 미연동 직원 독려 메시지 발송 (관리자 전용)
     @PostMapping("/nudge")
     public ResponseEntity<?> sendNudge(Authentication auth) {
