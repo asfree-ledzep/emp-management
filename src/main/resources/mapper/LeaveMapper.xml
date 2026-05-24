@@ -27,6 +27,7 @@
 
     <resultMap id="balanceResultMap" type="com.example.emp.model.LeaveBalance">
         <id     property="empno"     column="EMPNO"/>
+        <result property="ename"     column="ENAME"/>
         <result property="year"      column="YEAR"/>
         <result property="totalDays" column="TOTAL_DAYS"/>
         <result property="usedDays"  column="USED_DAYS"/>
@@ -114,6 +115,15 @@
           AND MGR_EMPNO = #{mgrEmpno}
           AND STATUS    = 'PENDING'
     </update>
+
+    <!-- ── ADMIN: 전체 사원 잔여 연차 현황 ── -->
+    <select id="findAllBalances" resultMap="balanceResultMap">
+        SELECT LB.EMPNO, E.ENAME, LB.YEAR, LB.TOTAL_DAYS, LB.USED_DAYS
+        FROM LEAVE_BALANCE LB
+        LEFT JOIN EMP E ON LB.EMPNO = E.EMPNO
+        WHERE LB.YEAR = #{year}
+        ORDER BY LB.EMPNO
+    </select>
 
     <!-- ── ADMIN 전체 목록 ── -->
     <select id="findAll" resultMap="leaveResultMap">

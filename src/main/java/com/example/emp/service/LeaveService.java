@@ -110,4 +110,9 @@ public class LeaveService {
     public LeaveBalance getBalanceForAdmin(Integer empno) {
         return getBalance(empno);
     }
+
+    // ── ADMIN: 전체 사원 연차 잔여 현황 ──
+    public List<LeaveBalance> getAllBalances(int year) {
+        return leaveMapper.findAllBalances(year);
+    }
 }

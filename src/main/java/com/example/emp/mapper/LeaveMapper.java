@@ -35,6 +35,9 @@ public interface LeaveMapper {
     /* ── ADMIN: 전체 목록 ── */
     List<LeaveRequest> findAll();
 
+    /* ── ADMIN: 전체 사원 연차 잔여 현황 ── */
+    List<LeaveBalance> findAllBalances(@Param("year") int year);
+
     /* ── ADMIN: 최종 승인/반려 ── */
     void updateAdminDecision(LeaveRequest req);
 

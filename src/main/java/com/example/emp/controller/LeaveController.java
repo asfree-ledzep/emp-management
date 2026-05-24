@@ -141,6 +141,20 @@ public class LeaveController {
         }
     }
 
+    // ── ADMIN: 전체 사원 연차 잔여 현황 ──
+    @GetMapping("/admin/balances")
+    public ResponseEntity<?> getAllBalances(
+            @RequestParam(defaultValue = "0") int year,
+            Authentication auth) {
+        if (!isAdmin(auth)) return ResponseEntity.status(403).build();
+        try {
+            int targetYear = year > 0 ? year : java.time.LocalDate.now().getYear();
+            return ResponseEntity.ok(leaveService.getAllBalances(targetYear));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // ── ADMIN: 최종 승인 ──
     @PutMapping("/{leaveId}/approve")
     public ResponseEntity<?> approve(
