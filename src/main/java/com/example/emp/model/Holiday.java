@@ -11,4 +11,5 @@ public class Holiday {
     private String holidayEndDate;  // "YYYY-MM-DD" 종료일 (단일 공휴일은 시작일과 동일)
     private String holidayName;
     private String createdBy;
+    private String source;          // "PUBLIC" = 공공 API, "CUSTOM" = 관리자 직접 입력
 }

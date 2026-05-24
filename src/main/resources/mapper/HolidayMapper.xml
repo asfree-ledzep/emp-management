@@ -10,44 +10,48 @@
         <result property="holidayEndDate" column="HOLIDAY_END_DATE"/>
         <result property="holidayName"    column="HOLIDAY_NAME"/>
         <result property="createdBy"      column="CREATED_BY"/>
+        <result property="source"         column="SOURCE"/>
     </resultMap>
 
-    <!-- 연도별 전체 조회 -->
+    <!-- 연도별 CUSTOM 항목 조회 -->
     <select id="findByYear" resultMap="holidayResultMap">
         SELECT HOLIDAY_ID,
                TO_CHAR(HOLIDAY_DATE,     'YYYY-MM-DD') AS HOLIDAY_DATE,
                TO_CHAR(HOLIDAY_END_DATE, 'YYYY-MM-DD') AS HOLIDAY_END_DATE,
                HOLIDAY_NAME,
-               CREATED_BY
+               CREATED_BY,
+               SOURCE
           FROM HOLIDAY
          WHERE EXTRACT(YEAR FROM HOLIDAY_DATE) = #{year}
          ORDER BY HOLIDAY_DATE
     </select>
 
-    <!-- 연월별 조회 (챗봇용) -->
+    <!-- 연월별 CUSTOM 항목 조회 (챗봇 병합용) -->
     <select id="findByYearMonth" resultMap="holidayResultMap">
         SELECT HOLIDAY_ID,
                TO_CHAR(HOLIDAY_DATE,     'YYYY-MM-DD') AS HOLIDAY_DATE,
                TO_CHAR(HOLIDAY_END_DATE, 'YYYY-MM-DD') AS HOLIDAY_END_DATE,
                HOLIDAY_NAME,
-               CREATED_BY
+               CREATED_BY,
+               SOURCE
           FROM HOLIDAY
          WHERE EXTRACT(YEAR  FROM HOLIDAY_DATE) = #{year}
            AND EXTRACT(MONTH FROM HOLIDAY_DATE) = #{month}
          ORDER BY HOLIDAY_DATE
     </select>
 
-    <!-- 등록 -->
+    <!-- 등록 (SOURCE = 'CUSTOM' 고정) -->
     <insert id="insert" parameterType="com.example.emp.model.Holiday">
         <selectKey keyProperty="holidayId" resultType="long" order="BEFORE">
             SELECT HOLIDAY_SEQ.NEXTVAL FROM DUAL
         </selectKey>
-        INSERT INTO HOLIDAY (HOLIDAY_ID, HOLIDAY_DATE, HOLIDAY_END_DATE, HOLIDAY_NAME, CREATED_BY)
+        INSERT INTO HOLIDAY (HOLIDAY_ID, HOLIDAY_DATE, HOLIDAY_END_DATE, HOLIDAY_NAME, SOURCE, CREATED_BY)
         VALUES (
           #{holidayId},
           TO_DATE(#{holidayDate}, 'YYYY-MM-DD'),
-          TO_DATE(#{holidayEndDate}, 'YYYY-MM-DD'),
+          TO_DATE(COALESCE(#{holidayEndDate}, #{holidayDate}), 'YYYY-MM-DD'),
           #{holidayName},
+          'CUSTOM',
           #{createdBy}
         )
     </insert>
