@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.LeaveMapper">
+
+    <!-- ── ResultMap ── -->
+    <resultMap id="leaveResultMap" type="com.example.emp.model.LeaveRequest">
+        <id     property="leaveId"     column="LEAVE_ID"/>
+        <result property="empno"       column="EMPNO"/>
+        <result property="ename"       column="ENAME"/>
+        <result property="deptName"    column="DNAME"/>
+        <result property="leaveType"   column="LEAVE_TYPE"/>
+        <result property="startDate"   column="START_DATE"/>
+        <result property="endDate"     column="END_DATE"/>
+        <result property="days"        column="DAYS"/>
+        <result property="reason"      column="REASON"/>
+        <result property="status"      column="STATUS"/>
+        <result property="mgrEmpno"    column="MGR_EMPNO"/>
+        <result property="mgrEname"    column="MGR_ENAME"/>
+        <result property="mgrComment"  column="MGR_COMMENT"/>
+        <result property="mgrAt"       column="MGR_AT"/>
+        <result property="adminComment" column="ADMIN_COMMENT"/>
+        <result property="adminAt"     column="ADMIN_AT"/>
+        <result property="createdAt"   column="CREATED_AT"/>
+    </resultMap>
+
+    <resultMap id="balanceResultMap" type="com.example.emp.model.LeaveBalance">
+        <id     property="empno"     column="EMPNO"/>
+        <result property="year"      column="YEAR"/>
+        <result property="totalDays" column="TOTAL_DAYS"/>
+        <result property="usedDays"  column="USED_DAYS"/>
+    </resultMap>
+
+    <!-- ── 단건 조회 ── -->
+    <select id="findById" resultMap="leaveResultMap">
+        SELECT LR.*,
+               E.ENAME,
+               D.DNAME,
+               ME.ENAME AS MGR_ENAME
+        FROM LEAVE_REQUEST LR
+        LEFT JOIN EMP  E  ON LR.EMPNO    = E.EMPNO
+        LEFT JOIN DEPT D  ON E.DEPTNO    = D.DEPTNO
+        LEFT JOIN EMP  ME ON LR.MGR_EMPNO = ME.EMPNO
+        WHERE LR.LEAVE_ID = #{leaveId}
+    </select>
+
+    <!-- ── 사원 본인 내역 ── -->
+    <select id="findByEmpno" resultMap="leaveResultMap">
+        SELECT LR.*,
+               E.ENAME,
+               D.DNAME,
+               ME.ENAME AS MGR_ENAME
+        FROM LEAVE_REQUEST LR
+        LEFT JOIN EMP  E  ON LR.EMPNO    = E.EMPNO
+        LEFT JOIN DEPT D  ON E.DEPTNO    = D.DEPTNO
+        LEFT JOIN EMP  ME ON LR.MGR_EMPNO = ME.EMPNO
+        WHERE LR.EMPNO = #{empno}
+        ORDER BY LR.CREATED_AT DESC
+    </select>
+
+    <!-- ── 연차 잔여 조회 ── -->
+    <select id="findBalance" resultMap="balanceResultMap">
+        SELECT * FROM LEAVE_BALANCE
+        WHERE EMPNO = #{empno} AND YEAR = #{year}
+    </select>
+
+    <!-- ── 연차 잔여 초기화 (없으면 15일로 생성) ── -->
+    <insert id="initBalance">
+        INSERT INTO LEAVE_BALANCE (EMPNO, YEAR, TOTAL_DAYS, USED_DAYS)
+        VALUES (#{empno}, #{year}, 15, 0)
+    </insert>
+
+    <!-- ── 연차 신청 ── -->
+    <insert id="insert">
+        INSERT INTO LEAVE_REQUEST
+            (LEAVE_ID, EMPNO, LEAVE_TYPE, START_DATE, END_DATE, DAYS, REASON, STATUS, MGR_EMPNO, CREATED_AT)
+        VALUES
+            (LEAVE_REQUEST_SEQ.NEXTVAL, #{empno}, #{leaveType},
+             TO_DATE(#{startDate}, 'YYYY-MM-DD'),
+             TO_DATE(#{endDate},   'YYYY-MM-DD'),
+             #{days}, #{reason}, 'PENDING', #{mgrEmpno}, SYSDATE)
+    </insert>
+
+    <!-- ── 사원 취소 (PENDING만) ── -->
+    <delete id="deleteByIdAndEmpno">
+        DELETE FROM LEAVE_REQUEST
+        WHERE LEAVE_ID = #{leaveId}
+          AND EMPNO    = #{empno}
+          AND STATUS   = 'PENDING'
+    </delete>
+
+    <!-- ── MGR 1차 대기 목록 ── -->
+    <select id="findPendingByMgr" resultMap="leaveResultMap">
+        SELECT LR.*,
+               E.ENAME,
+               D.DNAME,
+               ME.ENAME AS MGR_ENAME
+        FROM LEAVE_REQUEST LR
+        LEFT JOIN EMP  E  ON LR.EMPNO    = E.EMPNO
+        LEFT JOIN DEPT D  ON E.DEPTNO    = D.DEPTNO
+        LEFT JOIN EMP  ME ON LR.MGR_EMPNO = ME.EMPNO
+        WHERE LR.MGR_EMPNO = #{mgrEmpno}
+          AND LR.STATUS    = 'PENDING'
+        ORDER BY LR.CREATED_AT DESC
+    </select>
+
+    <!-- ── MGR 1차 승인/반려 ── -->
+    <update id="updateMgrDecision">
+        UPDATE LEAVE_REQUEST
+        SET STATUS      = #{status},
+            MGR_COMMENT = #{mgrComment},
+            MGR_AT      = SYSDATE
+        WHERE LEAVE_ID  = #{leaveId}
+          AND MGR_EMPNO = #{mgrEmpno}
+          AND STATUS    = 'PENDING'
+    </update>
+
+    <!-- ── ADMIN 전체 목록 ── -->
+    <select id="findAll" resultMap="leaveResultMap">
+        SELECT LR.*,
+               E.ENAME,
+               D.DNAME,
+               ME.ENAME AS MGR_ENAME
+        FROM LEAVE_REQUEST LR
+        LEFT JOIN EMP  E  ON LR.EMPNO    = E.EMPNO
+        LEFT JOIN DEPT D  ON E.DEPTNO    = D.DEPTNO
+        LEFT JOIN EMP  ME ON LR.MGR_EMPNO = ME.EMPNO
+        ORDER BY LR.CREATED_AT DESC
+    </select>
+
+    <!-- ── ADMIN 최종 승인/반려 ── -->
+    <update id="updateAdminDecision">
+        UPDATE LEAVE_REQUEST
+        SET STATUS        = #{status},
+            ADMIN_COMMENT = #{adminComment},
+            ADMIN_AT      = SYSDATE
+        WHERE LEAVE_ID = #{leaveId}
+          AND STATUS   = 'MGR_APPROVED'
+    </update>
+
+    <!-- ── 사용 연차 증가 ── -->
+    <update id="increaseUsedDays">
+        UPDATE LEAVE_BALANCE
+        SET USED_DAYS = USED_DAYS + #{days}
+        WHERE EMPNO = #{empno} AND YEAR = #{year}
+    </update>
+
+    <!-- ── 사용 연차 감소 (복구) ── -->
+    <update id="decreaseUsedDays">
+        UPDATE LEAVE_BALANCE
+        SET USED_DAYS = GREATEST(0, USED_DAYS - #{days})
+        WHERE EMPNO = #{empno} AND YEAR = #{year}
+    </update>
+
+</mapper>
