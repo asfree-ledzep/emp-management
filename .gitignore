@@ -16,6 +16,7 @@ target/
 *.log
 deploy.zip
 deploy-temp/
+.elasticbeanstalk/logs/
 
 .env
 .env.local
