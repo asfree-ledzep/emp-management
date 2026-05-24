@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.FileShareMapper">
+
+    <resultMap id="rm" type="com.example.emp.model.FileShare">
+        <id     property="fileId"       column="FILE_ID"/>
+        <result property="fileName"     column="FILE_NAME"/>
+        <result property="r2Key"        column="R2_KEY"/>
+        <result property="fileSize"     column="FILE_SIZE"/>
+        <result property="mimeType"     column="MIME_TYPE"/>
+        <result property="scope"        column="SCOPE"/>
+        <result property="deptno"       column="DEPTNO"/>
+        <result property="dname"        column="DNAME"/>
+        <result property="uploader"     column="UPLOADER"/>
+        <result property="uploaderName" column="UPLOADER_NAME"/>
+        <result property="createdAt"    column="CREATED_AT_STR"/>
+    </resultMap>
+
+    <!-- 공통 SELECT 컬럼 -->
+    <sql id="cols">
+        FS.FILE_ID, FS.FILE_NAME, FS.R2_KEY, FS.FILE_SIZE, FS.MIME_TYPE,
+        FS.SCOPE, FS.DEPTNO, FS.UPLOADER, FS.UPLOADER_NAME,
+        TO_CHAR(FS.CREATED_AT, 'YYYY-MM-DD HH24:MI') AS CREATED_AT_STR,
+        D.DNAME
+    </sql>
+
+    <!-- 단건 조회 (다운로드용 r2Key 포함) -->
+    <select id="findById" resultMap="rm">
+        SELECT <include refid="cols"/>
+        FROM FILE_SHARE FS
+        LEFT JOIN DEPT D ON FS.DEPTNO = D.DEPTNO
+        WHERE FS.FILE_ID = #{fileId}
+    </select>
+
+    <!-- 전체 공유 파일 -->
+    <select id="findByScope" resultMap="rm">
+        SELECT <include refid="cols"/>
+        FROM FILE_SHARE FS
+        LEFT JOIN DEPT D ON FS.DEPTNO = D.DEPTNO
+        WHERE FS.SCOPE = #{scope}
+        ORDER BY FS.CREATED_AT DESC
+    </select>
+
+    <!-- 부서별 파일 -->
+    <select id="findByDeptno" resultMap="rm">
+        SELECT <include refid="cols"/>
+        FROM FILE_SHARE FS
+        LEFT JOIN DEPT D ON FS.DEPTNO = D.DEPTNO
+        WHERE FS.SCOPE = 'DEPT' AND FS.DEPTNO = #{deptno}
+        ORDER BY FS.CREATED_AT DESC
+    </select>
+
+    <!-- 관리자: 동적 필터 -->
+    <select id="findAllAdmin" resultMap="rm">
+        SELECT <include refid="cols"/>
+        FROM FILE_SHARE FS
+        LEFT JOIN DEPT D ON FS.DEPTNO = D.DEPTNO
+        <where>
+            <if test="scope != null and scope != ''">AND FS.SCOPE = #{scope}</if>
+            <if test="deptno != null">AND FS.DEPTNO = #{deptno}</if>
+        </where>
+        ORDER BY FS.CREATED_AT DESC
+    </select>
+
+    <!-- 삽입 -->
+    <insert id="insert">
+        INSERT INTO FILE_SHARE
+            (FILE_ID, FILE_NAME, R2_KEY, FILE_SIZE, MIME_TYPE,
+             SCOPE, DEPTNO, UPLOADER, UPLOADER_NAME, CREATED_AT)
+        VALUES
+            (FILE_SHARE_SEQ.NEXTVAL, #{fileName}, #{r2Key}, #{fileSize}, #{mimeType},
+             #{scope}, #{deptno}, #{uploader}, #{uploaderName}, SYSDATE)
+    </insert>
+
+    <!-- 삭제 -->
+    <delete id="deleteById">
+        DELETE FROM FILE_SHARE WHERE FILE_ID = #{fileId}
+    </delete>
+
+</mapper>
