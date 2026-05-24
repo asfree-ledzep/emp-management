@@ -5,7 +5,7 @@
 <mapper namespace="com.example.emp.mapper.PushSubscriptionMapper">
 
     <select id="findAll" resultType="com.example.emp.model.PushSubscription">
-        SELECT ENDPOINT, P256DH, AUTH
+        SELECT ENDPOINT, P256DH, AUTH, EMPNO
           FROM PUSH_SUBSCRIPTIONS
     </select>
 
@@ -14,15 +14,25 @@
         USING DUAL
            ON (ps.ENDPOINT = #{endpoint})
         WHEN MATCHED THEN
-            UPDATE SET ps.P256DH = #{p256dh}, ps.AUTH = #{auth}
+            UPDATE SET ps.P256DH = #{p256dh},
+                       ps.AUTH   = #{auth},
+                       ps.EMPNO  = #{empno}
         WHEN NOT MATCHED THEN
-            INSERT (ENDPOINT, P256DH, AUTH)
-            VALUES (#{endpoint}, #{p256dh}, #{auth})
+            INSERT (ENDPOINT, P256DH, AUTH, EMPNO)
+            VALUES (#{endpoint}, #{p256dh}, #{auth}, #{empno})
     </insert>
 
     <delete id="deleteByEndpoint">
         DELETE FROM PUSH_SUBSCRIPTIONS
          WHERE ENDPOINT = #{endpoint}
     </delete>
+
+    <!-- 카카오 미연동 사원의 push 구독 목록 -->
+    <select id="findUnconnectedToKakao" resultType="com.example.emp.model.PushSubscription">
+        SELECT ENDPOINT, P256DH, AUTH, EMPNO
+          FROM PUSH_SUBSCRIPTIONS
+         WHERE EMPNO IS NOT NULL
+           AND EMPNO NOT IN (SELECT EMPNO FROM EMP_KAKAO)
+    </select>
 
 </mapper>

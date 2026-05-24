@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+
+
 @RestController
 @RequestMapping("/api/kakao")
 public class KakaoController {
@@ -25,6 +27,24 @@ public class KakaoController {
     @GetMapping("/connected-count")
     public ResponseEntity<?> getConnectedCount() {
         return ResponseEntity.ok(Map.of("count", kakaoService.countConnected()));
+    }
+
+    // 연동/미연동 직원 현황 조회 (관리자 전용)
+    @GetMapping("/status")
+    public ResponseEntity<?> getStatus(Authentication auth) {
+        if (!isAdmin(auth)) return ResponseEntity.status(403).build();
+        return ResponseEntity.ok(kakaoService.getStatus());
+    }
+
+    // 미연동 직원 독려 메시지 발송 (관리자 전용)
+    @PostMapping("/nudge")
+    public ResponseEntity<?> sendNudge(Authentication auth) {
+        if (!isAdmin(auth)) return ResponseEntity.status(403).build();
+        int sent = kakaoService.sendNudge();
+        return ResponseEntity.ok(Map.of(
+            "message", "독려 메시지 발송 완료",
+            "sentCount", sent
+        ));
     }
 
     // 콜백: 코드로 토큰 교환 + DB 저장
@@ -46,5 +66,10 @@ public class KakaoController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
+    }
+
+    private boolean isAdmin(Authentication auth) {
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }
 }

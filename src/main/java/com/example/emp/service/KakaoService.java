@@ -99,6 +99,52 @@ public class KakaoService {
         return empKakaoMapper.countAll();
     }
 
+    // 연동/미연동 직원 현황 조회
+    public Map<String, Object> getStatus() {
+        return Map.of(
+            "connected",   empKakaoMapper.findConnectedWithName(),
+            "unconnected", empKakaoMapper.findUnconnectedWithName()
+        );
+    }
+
+    // 미연동 직원 독려 메시지 발송 (연동된 직원들에게 전달 요청)
+    public int sendNudge() {
+        List<EmpKakao> connectedList = empKakaoMapper.findAll();
+        if (connectedList.isEmpty()) return 0;
+
+        List<Map<String, Object>> unconnected = empKakaoMapper.findUnconnectedWithName();
+        String names = unconnected.stream()
+                .map(m -> String.valueOf(m.get("ename")))
+                .collect(java.util.stream.Collectors.joining(", "));
+
+        String text = "📲 [HR 카카오 연동 독려 안내]\n\n"
+                + "아직 HR 시스템 카카오 연동을 완료하지 않은 동료가 있습니다.\n\n"
+                + (names.isBlank() ? "" : "📋 미연동 동료: " + names + "\n\n")
+                + "주변 동료에게 연동을 안내해 주시면 감사하겠습니다. 🙏\n\n"
+                + "👉 연동하기: " + APP_URL;
+
+        int sent = 0;
+        for (EmpKakao empKakao : connectedList) {
+            try {
+                sendMessage(empKakao, "", text, APP_URL);
+                sent++;
+            } catch (Exception e) {
+                log.warn("독려 메시지 실패 [empno={}]: {}", empKakao.getEmpno(), e.getMessage());
+                try {
+                    String newToken = refreshAccessToken(empKakao);
+                    if (newToken != null) {
+                        empKakao.setAccessToken(newToken);
+                        sendMessage(empKakao, "", text, APP_URL);
+                        sent++;
+                    }
+                } catch (Exception ex) {
+                    log.warn("독려 메시지 최종 실패 [empno={}]", empKakao.getEmpno());
+                }
+            }
+        }
+        return sent;
+    }
+
     // 특정 사원에게 카카오톡 메시지 발송
     public void sendMessageToEmp(Integer empno, String title, String content, String pageUrl) {
         EmpKakao empKakao = empKakaoMapper.findByEmpno(empno);
@@ -149,9 +195,13 @@ public class KakaoService {
 
     private void sendMessage(EmpKakao empKakao, String title, String content, String pageUrl) throws Exception {
         String url = (pageUrl != null && !pageUrl.isBlank()) ? pageUrl : APP_URL;
+        // title이 비어있으면 content를 그대로 사용 (sendNudge 등에서 직접 조합한 텍스트)
+        String fullText = (title == null || title.isBlank())
+                ? content
+                : title + "\n\n" + content + "\n\n👉 " + url;
         Map<String, Object> template = Map.of(
                 "object_type", "text",
-                "text", title + "\n\n" + content + "\n\n👉 " + url,
+                "text", fullText,
                 "link", Map.of(
                         "web_url", url,
                         "mobile_web_url", url

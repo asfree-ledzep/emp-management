@@ -14,4 +14,7 @@ public interface PushSubscriptionMapper {
     void upsert(PushSubscription sub);
 
     void deleteByEndpoint(@Param("endpoint") String endpoint);
+
+    // 카카오 미연동 사원의 push 구독 목록
+    List<PushSubscription> findUnconnectedToKakao();
 }

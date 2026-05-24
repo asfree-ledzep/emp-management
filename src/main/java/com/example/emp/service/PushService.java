@@ -57,6 +57,24 @@ public class PushService {
         subscriptionMapper.deleteByEndpoint(endpoint);
     }
 
+    // 카카오 미연동 사원에게 연동 독려 푸시 발송
+    public int sendNudgeToUnconnected() {
+        List<PushSubscription> subs = subscriptionMapper.findUnconnectedToKakao();
+        if (subs.isEmpty()) {
+            log.info("카카오 미연동 구독자 없음");
+            return 0;
+        }
+        String title = "📲 카카오 연동 안내";
+        String body  = "HR 시스템과 카카오를 연동하시면 중요 공지를 카카오톡으로 받아보실 수 있습니다! 지금 바로 연동해보세요 👉";
+        int sent = 0;
+        for (PushSubscription sub : subs) {
+            sendOne(sub, title, body);
+            sent++;
+        }
+        log.info("카카오 연동 독려 푸시 발송: {}명", sent);
+        return sent;
+    }
+
     // 전체 구독자에게 푸시 발송
     public void sendToAll(String title, String body) {
         List<PushSubscription> subs = subscriptionMapper.findAll();

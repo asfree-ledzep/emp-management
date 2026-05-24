@@ -4,6 +4,7 @@ import com.example.emp.model.PushSubscription;
 import com.example.emp.service.PushService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -36,5 +37,21 @@ public class PushController {
         String msg   = body.getOrDefault("body",  "푸시 알림 테스트입니다.");
         pushService.sendToAll(title, msg);
         return ResponseEntity.ok(Map.of("message", "푸시 발송 완료"));
+    }
+
+    // 카카오 미연동 사원 연동 독려 푸시 (관리자 전용)
+    @PostMapping("/nudge-kakao")
+    public ResponseEntity<?> nudgeKakao(Authentication auth) {
+        if (!isAdmin(auth)) return ResponseEntity.status(403).build();
+        int sent = pushService.sendNudgeToUnconnected();
+        return ResponseEntity.ok(Map.of(
+            "message", "카카오 연동 독려 알림 발송 완료",
+            "sentCount", sent
+        ));
+    }
+
+    private boolean isAdmin(Authentication auth) {
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }
 }

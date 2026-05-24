@@ -42,4 +42,20 @@
         SELECT COUNT(*) FROM EMP_KAKAO
     </select>
 
+    <!-- 카카오 연동 직원 목록 (EMP JOIN EMP_KAKAO) -->
+    <select id="findConnectedWithName" resultType="java.util.LinkedHashMap">
+        SELECT e.EMPNO AS "empno", e.ENAME AS "ename"
+          FROM EMP e
+         INNER JOIN EMP_KAKAO ek ON e.EMPNO = ek.EMPNO
+         ORDER BY e.ENAME
+    </select>
+
+    <!-- 카카오 미연동 직원 목록 -->
+    <select id="findUnconnectedWithName" resultType="java.util.LinkedHashMap">
+        SELECT e.EMPNO AS "empno", e.ENAME AS "ename"
+          FROM EMP e
+         WHERE e.EMPNO NOT IN (SELECT ek.EMPNO FROM EMP_KAKAO ek)
+         ORDER BY e.ENAME
+    </select>
+
 </mapper>
