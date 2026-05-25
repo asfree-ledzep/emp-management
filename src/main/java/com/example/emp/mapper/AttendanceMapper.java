@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface AttendanceMapper {
@@ -30,4 +31,7 @@ public interface AttendanceMapper {
 
     // 오늘 아직 출근하지 않은 사원 목록
     List<Attendance> findAbsentToday();
+
+    // 월별 직원별 근태 누계 (근태불량자 분석용)
+    List<Map<String, Object>> findMonthlyStats(@Param("month") String month);
 }

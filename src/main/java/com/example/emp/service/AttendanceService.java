@@ -82,4 +82,12 @@ public class AttendanceService {
     public List<Attendance> getAbsentToday() {
         return attendanceMapper.findAbsentToday();
     }
+
+    /** 월별 직원별 근태 누계 (근태불량자 분석) */
+    public List<Map<String, Object>> getMonthlyStats(String month) {
+        if (month == null || month.isBlank()) {
+            month = java.time.YearMonth.now().toString();
+        }
+        return attendanceMapper.findMonthlyStats(month);
+    }
 }

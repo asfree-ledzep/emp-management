@@ -140,6 +140,26 @@
         ORDER BY A.CHECK_IN DESC
     </select>
 
+    <!-- 월별 직원별 근태 누계 (근태불량자 분석용) -->
+    <select id="findMonthlyStats" resultType="map">
+        SELECT E.EMPNO                                                             AS "empno",
+               E.ENAME                                                             AS "ename",
+               D.DNAME                                                             AS "dname",
+               COUNT(*)                                                            AS "totalDays",
+               SUM(CASE WHEN A.STATUS = 'NORMAL'      THEN 1 ELSE 0 END)          AS "normalCnt",
+               SUM(CASE WHEN A.STATUS = 'LATE'        THEN 1 ELSE 0 END)          AS "lateCnt",
+               SUM(CASE WHEN A.STATUS = 'EARLY_LEAVE' THEN 1 ELSE 0 END)          AS "earlyLeaveCnt",
+               SUM(CASE WHEN A.STATUS IN ('LATE','EARLY_LEAVE') THEN 1 ELSE 0 END) AS "badCnt",
+               ROUND(AVG(CASE WHEN A.WORK_MINUTES IS NOT NULL THEN A.WORK_MINUTES END)) AS "avgWorkMin"
+        FROM ATTENDANCE A
+        JOIN EMP  E ON A.EMPNO  = E.EMPNO
+        JOIN DEPT D ON E.DEPTNO = D.DEPTNO
+        WHERE TO_CHAR(A.WORK_DATE, 'YYYY-MM') = #{month}
+        GROUP BY E.EMPNO, E.ENAME, D.DNAME
+        ORDER BY SUM(CASE WHEN A.STATUS IN ('LATE','EARLY_LEAVE') THEN 1 ELSE 0 END) DESC,
+                 E.ENAME
+    </select>
+
     <!-- 오늘 미출근 사원 목록 (EMP 전체 - 오늘 출근자) -->
     <select id="findAbsentToday" resultMap="AttendanceMap">
         SELECT NULL       AS ATTEND_ID,

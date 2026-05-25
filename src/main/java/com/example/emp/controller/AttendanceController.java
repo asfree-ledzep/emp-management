@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/attendance")
@@ -59,5 +60,15 @@ public class AttendanceController {
     @GetMapping("/absent-today")
     public ResponseEntity<List<Attendance>> absentToday() {
         return ResponseEntity.ok(attendanceService.getAbsentToday());
+    }
+
+    /**
+     * 월별 직원별 근태 누계 (근태불량자 분석)
+     * GET /api/attendance/monthly-stats?month=2025-05
+     */
+    @GetMapping("/monthly-stats")
+    public ResponseEntity<List<Map<String, Object>>> monthlyStats(
+            @RequestParam(required = false) String month) {
+        return ResponseEntity.ok(attendanceService.getMonthlyStats(month));
     }
 }
