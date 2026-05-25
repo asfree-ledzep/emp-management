@@ -140,4 +140,26 @@
         ORDER BY A.CHECK_IN DESC
     </select>
 
+    <!-- 오늘 미출근 사원 목록 (EMP 전체 - 오늘 출근자) -->
+    <select id="findAbsentToday" resultMap="AttendanceMap">
+        SELECT NULL       AS ATTEND_ID,
+               E.EMPNO,
+               E.ENAME,
+               D.DNAME,
+               NULL       AS WORK_DATE,
+               NULL       AS CHECK_IN,
+               NULL       AS CHECK_OUT,
+               NULL       AS WORK_MINUTES,
+               'ABSENT'   AS STATUS,
+               NULL       AS NOTE,
+               NULL       AS CREATED_AT
+        FROM EMP  E
+        JOIN DEPT D ON E.DEPTNO = D.DEPTNO
+        WHERE E.EMPNO NOT IN (
+            SELECT EMPNO FROM ATTENDANCE
+            WHERE TRUNC(WORK_DATE) = TRUNC(SYSDATE)
+        )
+        ORDER BY E.ENAME
+    </select>
+
 </mapper>

@@ -27,4 +27,7 @@ public interface AttendanceMapper {
 
     // 오늘 전체 출근 현황 (QR 화면용)
     List<Attendance> findTodayAll();
+
+    // 오늘 아직 출근하지 않은 사원 목록
+    List<Attendance> findAbsentToday();
 }

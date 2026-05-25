@@ -51,4 +51,13 @@ public class AttendanceController {
     public ResponseEntity<List<Attendance>> today() {
         return ResponseEntity.ok(attendanceService.getTodayAll());
     }
+
+    /**
+     * 오늘 미출근 사원 목록
+     * GET /api/attendance/absent-today
+     */
+    @GetMapping("/absent-today")
+    public ResponseEntity<List<Attendance>> absentToday() {
+        return ResponseEntity.ok(attendanceService.getAbsentToday());
+    }
 }

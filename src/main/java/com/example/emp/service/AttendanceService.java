@@ -77,4 +77,9 @@ public class AttendanceService {
     public List<Attendance> getTodayAll() {
         return attendanceMapper.findTodayAll();
     }
+
+    /** 오늘 미출근 사원 */
+    public List<Attendance> getAbsentToday() {
+        return attendanceMapper.findAbsentToday();
+    }
 }
