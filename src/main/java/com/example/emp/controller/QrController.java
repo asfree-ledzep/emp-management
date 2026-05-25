@@ -31,6 +31,16 @@ public class QrController {
     }
 
     /**
+     * 관리자: 강제 새 QR 토큰 발급 (🔄 버튼)
+     * POST /api/qr/generate
+     */
+    @PostMapping("/generate")
+    public ResponseEntity<QrToken> generate() {
+        QrToken token = qrService.forceGenerateToken();
+        return ResponseEntity.ok(token);
+    }
+
+    /**
      * 직원 QR 스캔: 토큰 검증 후 출퇴근 기록
      * POST /api/qr/scan?token=<UUID>&empno=<empno>
      */

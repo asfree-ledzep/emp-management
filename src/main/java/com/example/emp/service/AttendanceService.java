@@ -1,5 +1,6 @@
 package com.example.emp.service;
 
+import com.example.emp.config.AttendanceConfigHolder;
 import com.example.emp.mapper.AttendanceMapper;
 import com.example.emp.model.Attendance;
 import org.springframework.stereotype.Service;
@@ -13,9 +14,12 @@ import java.util.Map;
 public class AttendanceService {
 
     private final AttendanceMapper attendanceMapper;
+    private final AttendanceConfigHolder attendanceConfig;
 
-    public AttendanceService(AttendanceMapper attendanceMapper) {
+    public AttendanceService(AttendanceMapper attendanceMapper,
+                             AttendanceConfigHolder attendanceConfig) {
         this.attendanceMapper = attendanceMapper;
+        this.attendanceConfig = attendanceConfig;
     }
 
     /**
@@ -34,8 +38,12 @@ public class AttendanceService {
                               "message", "이미 오늘 출근 처리가 되어 있습니다.",
                               "checkIn", today.getCheckIn());
             }
+            // 관리자 설정 출근 마감 시간 기준으로 지각 여부 판단
+            LocalTime deadline = attendanceConfig.getCheckInDeadline();
+            String status = now.isAfter(deadline) ? "LATE" : "NORMAL";
             Attendance attendance = new Attendance();
             attendance.setEmpno(empno);
+            attendance.setStatus(status);
             attendanceMapper.insertCheckIn(attendance);
             today = attendanceMapper.findTodayByEmpno(empno);
             return Map.of("result", "CHECK_IN",

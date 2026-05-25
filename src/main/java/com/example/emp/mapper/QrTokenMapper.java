@@ -10,4 +10,5 @@ public interface QrTokenMapper {
     QrToken findValidToken();  // 현재 유효한 토큰
     QrToken findByToken(@Param("token") String token);
     void deleteExpired();      // 만료된 토큰 정리
+    void deleteAll();          // 강제 재발급용 - 전체 삭제
 }

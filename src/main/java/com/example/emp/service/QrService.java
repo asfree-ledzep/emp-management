@@ -34,6 +34,19 @@ public class QrService {
     }
 
     /**
+     * 강제 새 토큰 발급 (관리자 🔄 버튼).
+     * 기존 토큰 전부 삭제 후 새 5분 토큰 생성.
+     */
+    @Transactional
+    public QrToken forceGenerateToken() {
+        qrTokenMapper.deleteAll();
+        QrToken newToken = new QrToken();
+        newToken.setToken(UUID.randomUUID().toString());
+        qrTokenMapper.insert(newToken);
+        return qrTokenMapper.findValidToken();
+    }
+
+    /**
      * 토큰 유효성 검증 (스캔 시 호출).
      */
     public QrToken validateToken(String token) {

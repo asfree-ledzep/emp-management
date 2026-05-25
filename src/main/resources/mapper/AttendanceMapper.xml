@@ -37,7 +37,7 @@
           AND TRUNC(A.WORK_DATE) = TRUNC(SYSDATE)
     </select>
 
-    <!-- 출근 기록 삽입 (CHECK_IN 시간 기준 상태 자동 판단) -->
+    <!-- 출근 기록 삽입 (status는 Java에서 계산하여 전달) -->
     <insert id="insertCheckIn" parameterType="com.example.emp.model.Attendance">
         INSERT INTO ATTENDANCE (ATTEND_ID, EMPNO, WORK_DATE, CHECK_IN, STATUS, CREATED_AT)
         VALUES (
@@ -45,12 +45,7 @@
             #{empno},
             TRUNC(SYSDATE),
             SYSDATE,
-            CASE
-                WHEN TO_NUMBER(TO_CHAR(SYSDATE, 'HH24')) * 60
-                   + TO_NUMBER(TO_CHAR(SYSDATE, 'MI')) > 9 * 60
-                THEN 'LATE'
-                ELSE 'NORMAL'
-            END,
+            #{status},
             SYSDATE
         )
     </insert>

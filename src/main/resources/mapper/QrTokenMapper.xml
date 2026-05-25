@@ -49,4 +49,9 @@
         DELETE FROM QR_TOKEN WHERE EXPIRES_AT &lt;= SYSDATE
     </delete>
 
+    <!-- 전체 삭제 (강제 재발급) -->
+    <delete id="deleteAll">
+        DELETE FROM QR_TOKEN
+    </delete>
+
 </mapper>
