@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.emp.mapper.DmMapper">
+
+    <resultMap id="DmMap" type="com.example.emp.model.DmMessage">
+        <id     property="dmId"          column="DM_ID"/>
+        <result property="senderEmpno"   column="SENDER_EMPNO"/>
+        <result property="receiverEmpno" column="RECEIVER_EMPNO"/>
+        <result property="senderName"    column="SENDER_NAME"/>
+        <result property="content"       column="CONTENT"/>
+        <result property="sentAt"        column="SENT_AT"/>
+    </resultMap>
+
+    <!-- DM 저장 -->
+    <insert id="insert" parameterType="com.example.emp.model.DmMessage">
+        INSERT INTO DM_MESSAGE (DM_ID, SENDER_EMPNO, RECEIVER_EMPNO, SENDER_NAME, CONTENT, SENT_AT)
+        VALUES (DM_MSG_SEQ.NEXTVAL, #{senderEmpno}, #{receiverEmpno}, #{senderName}, #{content}, SYSDATE + 9/24)
+    </insert>
+
+    <!-- 두 사용자 간 대화 이력 (오래된 순) -->
+    <select id="findHistory" resultMap="DmMap">
+        SELECT DM_ID, SENDER_EMPNO, RECEIVER_EMPNO, SENDER_NAME, CONTENT,
+               TO_CHAR(SENT_AT, 'HH24:MI') AS SENT_AT
+        FROM (
+            SELECT * FROM DM_MESSAGE
+             WHERE (SENDER_EMPNO = #{empno1} AND RECEIVER_EMPNO = #{empno2})
+                OR (SENDER_EMPNO = #{empno2} AND RECEIVER_EMPNO = #{empno1})
+             ORDER BY DM_ID DESC
+        )
+        WHERE ROWNUM &lt;= #{limit}
+        ORDER BY DM_ID ASC
+    </select>
+
+</mapper>
