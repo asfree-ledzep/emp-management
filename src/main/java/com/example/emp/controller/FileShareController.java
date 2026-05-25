@@ -61,7 +61,7 @@ public class FileShareController {
             @RequestParam MultipartFile              file,
             @RequestParam String                     scope,
             @RequestParam(required = false) Integer  deptno,
-            Authentication auth) throws IOException {
+            Authentication auth) {
 
         if (!fileShareService.isR2Ready()) {
             return ResponseEntity.status(503)
@@ -86,8 +86,13 @@ public class FileShareController {
             }
         }
 
-        fileShareService.upload(file, scope, actualDeptno, uploader, uploaderName);
-        return ResponseEntity.ok(Map.of("result", "ok"));
+        try {
+            fileShareService.upload(file, scope, actualDeptno, uploader, uploaderName);
+            return ResponseEntity.ok(Map.of("result", "ok"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "업로드 실패: " + e.getMessage()));
+        }
     }
 
     // ── 파일 다운로드 (서버 스트리밍) ──

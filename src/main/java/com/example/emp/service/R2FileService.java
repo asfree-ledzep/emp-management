@@ -9,6 +9,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -46,11 +47,15 @@ public class R2FileService {
             // R2 자격증명 미설정 시 기능 비활성화 (서버 시작은 정상)
             return;
         }
+        // R2는 path-style URL 필수: https://<account>.r2.cloudflarestorage.com/<bucket>/key
         client = S3Client.builder()
                 .endpointOverride(URI.create("https://" + accountId + ".r2.cloudflarestorage.com"))
                 .region(Region.of("auto"))
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(accessKey, secretKey)))
+                .serviceConfiguration(S3Configuration.builder()
+                        .pathStyleAccessEnabled(true)
+                        .build())
                 .build();
         ready = true;
     }
