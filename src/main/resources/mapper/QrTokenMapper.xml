@@ -10,23 +10,27 @@
         <result property="createdAt" column="CREATED_AT"/>
     </resultMap>
 
+    <!-- 5분 후 만료 (SYSDATE + 5/1440 = 5분) -->
     <insert id="insert" parameterType="com.example.emp.model.QrToken">
         INSERT INTO QR_TOKEN (TOKEN_ID, TOKEN, EXPIRES_AT, CREATED_AT)
         VALUES (QR_TOKEN_SEQ.NEXTVAL, #{token},
-                TO_CHAR(SYSDATE + INTERVAL '5' MINUTE, 'YYYY-MM-DD HH24:MI:SS'),
-                TO_CHAR(SYSDATE, 'YYYY-MM-DD HH24:MI:SS'))
+                SYSDATE + 5/1440,
+                SYSDATE)
     </insert>
 
-    <!-- 현재 유효한 토큰 (아직 만료 안 됨) -->
+    <!-- 현재 유효한 토큰: ROWNUM으로 1건만 -->
     <select id="findValidToken" resultMap="QrTokenMap">
         SELECT TOKEN_ID,
                TOKEN,
                TO_CHAR(EXPIRES_AT, 'YYYY-MM-DD HH24:MI:SS') AS EXPIRES_AT,
                TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
-        FROM QR_TOKEN
-        WHERE EXPIRES_AT > SYSDATE
-        ORDER BY CREATED_AT DESC
-        FETCH FIRST 1 ROWS ONLY
+        FROM (
+            SELECT TOKEN_ID, TOKEN, EXPIRES_AT, CREATED_AT
+            FROM QR_TOKEN
+            WHERE EXPIRES_AT > SYSDATE
+            ORDER BY CREATED_AT DESC
+        )
+        WHERE ROWNUM = 1
     </select>
 
     <!-- 토큰 값으로 조회 + 유효성 체크 -->
