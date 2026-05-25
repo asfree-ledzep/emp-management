@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.emp.mapper.ChatMapper">
+
+    <resultMap id="ChatMap" type="com.example.emp.model.ChatMessage">
+        <id     property="msgId"      column="MSG_ID"/>
+        <result property="empno"      column="EMPNO"/>
+        <result property="senderName" column="SENDER_NAME"/>
+        <result property="content"    column="CONTENT"/>
+        <result property="sentAt"     column="SENT_AT"/>
+    </resultMap>
+
+    <!-- 메시지 저장 -->
+    <insert id="insert" parameterType="com.example.emp.model.ChatMessage">
+        INSERT INTO CHAT_MESSAGE (MSG_ID, EMPNO, SENDER_NAME, CONTENT, SENT_AT)
+        VALUES (CHAT_MSG_SEQ.NEXTVAL, #{empno}, #{senderName}, #{content}, SYSDATE + 9/24)
+    </insert>
+
+    <!-- 최근 N건 조회 (오래된 순으로 반환) -->
+    <select id="findRecent" resultMap="ChatMap">
+        SELECT MSG_ID, EMPNO, SENDER_NAME, CONTENT,
+               TO_CHAR(SENT_AT, 'HH24:MI') AS SENT_AT
+        FROM (
+            SELECT * FROM CHAT_MESSAGE
+            ORDER BY MSG_ID DESC
+        )
+        WHERE ROWNUM &lt;= #{limit}
+        ORDER BY MSG_ID ASC
+    </select>
+
+</mapper>
