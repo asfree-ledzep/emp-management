@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -67,12 +68,14 @@ public class DmController {
         return empMapper.findAll().stream()
                 .filter(e -> name.isEmpty() ||
                         (e.getEname() != null && e.getEname().contains(name)))
-                .map(e -> Map.of(
-                        "empno",    e.getEmpno(),
-                        "ename",    e.getEname() != null    ? e.getEname()    : "",
-                        "job",      e.getJob()   != null    ? e.getJob()      : "",
-                        "photoUrl", e.getPhotoUrl() != null ? e.getPhotoUrl() : ""
-                ))
+                .map(e -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("empno",    e.getEmpno());
+                    m.put("ename",    e.getEname()    != null ? e.getEname()    : "");
+                    m.put("job",      e.getJob()      != null ? e.getJob()      : "");
+                    m.put("photoUrl", e.getPhotoUrl() != null ? e.getPhotoUrl() : "");
+                    return m;
+                })
                 .collect(Collectors.toList());
     }
 }
