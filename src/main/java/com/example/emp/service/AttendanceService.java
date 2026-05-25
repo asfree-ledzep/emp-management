@@ -11,10 +11,10 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
-/** KST (Asia/Seoul) = UTC+9 */
-
 @Service
 public class AttendanceService {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final AttendanceMapper attendanceMapper;
     private final AttendanceConfigHolder attendanceConfig;
@@ -26,52 +26,62 @@ public class AttendanceService {
     }
 
     /**
-     * QR 스캔 처리.
-     * 오전(13시 미만) → 출근, 오후(13시 이상) → 퇴근
+     * QR 스캔 처리 (KST 기준)
+     *
+     * 1) 오늘 출근 기록 없음 → 시간대 무관하게 출근 처리 (오후 스캔도 지각 출근)
+     * 2) 출근 기록 있음 + 오전(13시 미만) → 이미 출근 안내
+     * 3) 출근 기록 있음 + 오후(13시 이상) → 퇴근 처리
      */
     @Transactional
     public Map<String, Object> scan(Integer empno) {
-        LocalTime now = LocalTime.now(ZoneId.of("Asia/Seoul")); // KST 기준
+        LocalTime now   = LocalTime.now(KST);
         Attendance today = attendanceMapper.findTodayByEmpno(empno);
 
-        if (now.getHour() < 13) {
-            // 출근 처리
-            if (today != null) {
-                return Map.of("result", "ALREADY_CHECKED_IN",
-                              "message", "이미 오늘 출근 처리가 되어 있습니다.",
-                              "checkIn", today.getCheckIn());
-            }
-            // 관리자 설정 출근 마감 시간 기준으로 지각 여부 판단
+        /* ── 출근 기록 없음 → 출근 처리 (시간대 무관) ── */
+        if (today == null) {
             LocalTime deadline = attendanceConfig.getCheckInDeadline();
             String status = now.isAfter(deadline) ? "LATE" : "NORMAL";
+
             Attendance attendance = new Attendance();
             attendance.setEmpno(empno);
             attendance.setStatus(status);
             attendanceMapper.insertCheckIn(attendance);
+
             today = attendanceMapper.findTodayByEmpno(empno);
-            return Map.of("result", "CHECK_IN",
-                          "message", "출근이 기록되었습니다.",
-                          "checkIn", today.getCheckIn(),
-                          "status", today.getStatus());
-        } else {
-            // 퇴근 처리
-            if (today == null) {
-                return Map.of("result", "NO_CHECK_IN",
-                              "message", "오늘 출근 기록이 없습니다. 관리자에게 문의하세요.");
-            }
-            if (today.getCheckOut() != null && !today.getCheckOut().isEmpty()) {
-                return Map.of("result", "ALREADY_CHECKED_OUT",
-                              "message", "이미 퇴근 처리가 되어 있습니다.",
-                              "checkOut", today.getCheckOut());
-            }
-            attendanceMapper.updateCheckOut(empno);
-            today = attendanceMapper.findTodayByEmpno(empno);
-            return Map.of("result", "CHECK_OUT",
-                          "message", "퇴근이 기록되었습니다.",
-                          "checkOut", today.getCheckOut(),
-                          "workMinutes", today.getWorkMinutes() != null ? today.getWorkMinutes() : 0,
-                          "status", today.getStatus());
+            return Map.of(
+                "result",  "CHECK_IN",
+                "message", "출근이 기록되었습니다.",
+                "checkIn", today.getCheckIn(),
+                "status",  today.getStatus()
+            );
         }
+
+        /* ── 출근 기록 있음 + 오전 → 중복 출근 안내 ── */
+        if (now.getHour() < 13) {
+            return Map.of(
+                "result",  "ALREADY_CHECKED_IN",
+                "message", "이미 오늘 출근 처리가 되어 있습니다.",
+                "checkIn", today.getCheckIn()
+            );
+        }
+
+        /* ── 출근 기록 있음 + 오후 → 퇴근 처리 ── */
+        if (today.getCheckOut() != null && !today.getCheckOut().isEmpty()) {
+            return Map.of(
+                "result",   "ALREADY_CHECKED_OUT",
+                "message",  "이미 퇴근 처리가 되어 있습니다.",
+                "checkOut", today.getCheckOut()
+            );
+        }
+        attendanceMapper.updateCheckOut(empno);
+        today = attendanceMapper.findTodayByEmpno(empno);
+        return Map.of(
+            "result",      "CHECK_OUT",
+            "message",     "퇴근이 기록되었습니다.",
+            "checkOut",    today.getCheckOut(),
+            "workMinutes", today.getWorkMinutes() != null ? today.getWorkMinutes() : 0,
+            "status",      today.getStatus()
+        );
     }
 
     /** 직원 월별 기록 */
@@ -94,10 +104,10 @@ public class AttendanceService {
         return attendanceMapper.findAbsentToday();
     }
 
-    /** 월별 직원별 근태 누계 (근태불량자 분석) */
+    /** 월별 직원별 근태 누계 (근퇴불량자 분석) */
     public List<Map<String, Object>> getMonthlyStats(String month) {
         if (month == null || month.isBlank()) {
-            month = java.time.YearMonth.now(ZoneId.of("Asia/Seoul")).toString();
+            month = java.time.YearMonth.now(KST).toString();
         }
         return attendanceMapper.findMonthlyStats(month);
     }
