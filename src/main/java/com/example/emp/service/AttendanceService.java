@@ -7,8 +7,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+
+/** KST (Asia/Seoul) = UTC+9 */
 
 @Service
 public class AttendanceService {
@@ -28,7 +31,7 @@ public class AttendanceService {
      */
     @Transactional
     public Map<String, Object> scan(Integer empno) {
-        LocalTime now = LocalTime.now();
+        LocalTime now = LocalTime.now(ZoneId.of("Asia/Seoul")); // KST 기준
         Attendance today = attendanceMapper.findTodayByEmpno(empno);
 
         if (now.getHour() < 13) {
@@ -94,7 +97,7 @@ public class AttendanceService {
     /** 월별 직원별 근태 누계 (근태불량자 분석) */
     public List<Map<String, Object>> getMonthlyStats(String month) {
         if (month == null || month.isBlank()) {
-            month = java.time.YearMonth.now().toString();
+            month = java.time.YearMonth.now(ZoneId.of("Asia/Seoul")).toString();
         }
         return attendanceMapper.findMonthlyStats(month);
     }

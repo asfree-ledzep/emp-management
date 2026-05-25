@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -32,8 +33,7 @@ public class AttendanceController {
             @RequestParam Integer empno,
             @RequestParam(required = false) String month) {
         if (month == null || month.isBlank()) {
-            java.time.YearMonth ym = java.time.YearMonth.now();
-            month = ym.toString(); // "YYYY-MM"
+            month = java.time.YearMonth.now(ZoneId.of("Asia/Seoul")).toString();
         }
         return ResponseEntity.ok(attendanceService.getMyRecords(empno, month));
     }

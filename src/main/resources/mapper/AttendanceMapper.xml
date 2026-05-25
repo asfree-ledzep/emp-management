@@ -17,6 +17,8 @@
         <result property="createdAt"   column="CREATED_AT"/>
     </resultMap>
 
+    <!-- SYSDATE + 9/24 = KST (UTC+9) -->
+
     <!-- 오늘 출근 기록 조회 -->
     <select id="findTodayByEmpno" resultMap="AttendanceMap">
         SELECT A.ATTEND_ID,
@@ -34,36 +36,36 @@
         JOIN EMP  E ON A.EMPNO  = E.EMPNO
         JOIN DEPT D ON E.DEPTNO = D.DEPTNO
         WHERE A.EMPNO = #{empno}
-          AND TRUNC(A.WORK_DATE) = TRUNC(SYSDATE)
+          AND TRUNC(A.WORK_DATE) = TRUNC(SYSDATE + 9/24)
     </select>
 
-    <!-- 출근 기록 삽입 (status는 Java에서 계산하여 전달) -->
+    <!-- 출근 기록 삽입 (KST 기준, status는 Java에서 계산하여 전달) -->
     <insert id="insertCheckIn" parameterType="com.example.emp.model.Attendance">
         INSERT INTO ATTENDANCE (ATTEND_ID, EMPNO, WORK_DATE, CHECK_IN, STATUS, CREATED_AT)
         VALUES (
             ATTENDANCE_SEQ.NEXTVAL,
             #{empno},
-            TRUNC(SYSDATE),
-            SYSDATE,
+            TRUNC(SYSDATE + 9/24),
+            SYSDATE + 9/24,
             #{status},
-            SYSDATE
+            SYSDATE + 9/24
         )
     </insert>
 
-    <!-- 퇴근 업데이트 (WORK_MINUTES 자동 계산, EARLY_LEAVE 판단) -->
+    <!-- 퇴근 업데이트 (KST 기준, WORK_MINUTES 자동 계산, EARLY_LEAVE 판단) -->
     <update id="updateCheckOut">
         UPDATE ATTENDANCE
-        SET CHECK_OUT    = SYSDATE,
-            WORK_MINUTES = ROUND((SYSDATE - CHECK_IN) * 24 * 60),
+        SET CHECK_OUT    = SYSDATE + 9/24,
+            WORK_MINUTES = ROUND(((SYSDATE + 9/24) - CHECK_IN) * 24 * 60),
             STATUS       = CASE
                                WHEN STATUS = 'LATE' THEN 'LATE'
-                               WHEN TO_NUMBER(TO_CHAR(SYSDATE, 'HH24')) * 60
-                                  + TO_NUMBER(TO_CHAR(SYSDATE, 'MI')) &lt; 18 * 60
+                               WHEN TO_NUMBER(TO_CHAR(SYSDATE + 9/24, 'HH24')) * 60
+                                  + TO_NUMBER(TO_CHAR(SYSDATE + 9/24, 'MI')) &lt; 18 * 60
                                THEN 'EARLY_LEAVE'
                                ELSE 'NORMAL'
                            END
         WHERE EMPNO = #{empno}
-          AND TRUNC(WORK_DATE) = TRUNC(SYSDATE)
+          AND TRUNC(WORK_DATE) = TRUNC(SYSDATE + 9/24)
           AND CHECK_OUT IS NULL
     </update>
 
@@ -131,11 +133,11 @@
         FROM ATTENDANCE A
         JOIN EMP  E ON A.EMPNO  = E.EMPNO
         JOIN DEPT D ON E.DEPTNO = D.DEPTNO
-        WHERE TRUNC(A.WORK_DATE) = TRUNC(SYSDATE)
+        WHERE TRUNC(A.WORK_DATE) = TRUNC(SYSDATE + 9/24)
         ORDER BY A.CHECK_IN DESC
     </select>
 
-    <!-- 월별 직원별 근태 누계 (근태불량자 분석용) -->
+    <!-- 월별 직원별 근태 누계 (근퇴불량자 분석용) -->
     <select id="findMonthlyStats" resultType="map">
         SELECT E.EMPNO                                                             AS "empno",
                E.ENAME                                                             AS "ename",
@@ -172,7 +174,7 @@
         JOIN DEPT D ON E.DEPTNO = D.DEPTNO
         WHERE E.EMPNO NOT IN (
             SELECT EMPNO FROM ATTENDANCE
-            WHERE TRUNC(WORK_DATE) = TRUNC(SYSDATE)
+            WHERE TRUNC(WORK_DATE) = TRUNC(SYSDATE + 9/24)
         )
         ORDER BY E.ENAME
     </select>
