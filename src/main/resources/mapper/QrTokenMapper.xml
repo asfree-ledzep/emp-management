@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.emp.mapper.QrTokenMapper">
+
+    <resultMap id="QrTokenMap" type="com.example.emp.model.QrToken">
+        <id     property="tokenId"   column="TOKEN_ID"/>
+        <result property="token"     column="TOKEN"/>
+        <result property="expiresAt" column="EXPIRES_AT"/>
+        <result property="createdAt" column="CREATED_AT"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.example.emp.model.QrToken">
+        INSERT INTO QR_TOKEN (TOKEN_ID, TOKEN, EXPIRES_AT, CREATED_AT)
+        VALUES (QR_TOKEN_SEQ.NEXTVAL, #{token},
+                TO_CHAR(SYSDATE + INTERVAL '5' MINUTE, 'YYYY-MM-DD HH24:MI:SS'),
+                TO_CHAR(SYSDATE, 'YYYY-MM-DD HH24:MI:SS'))
+    </insert>
+
+    <!-- 현재 유효한 토큰 (아직 만료 안 됨) -->
+    <select id="findValidToken" resultMap="QrTokenMap">
+        SELECT TOKEN_ID,
+               TOKEN,
+               TO_CHAR(EXPIRES_AT, 'YYYY-MM-DD HH24:MI:SS') AS EXPIRES_AT,
+               TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
+        FROM QR_TOKEN
+        WHERE EXPIRES_AT > SYSDATE
+        ORDER BY CREATED_AT DESC
+        FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <!-- 토큰 값으로 조회 + 유효성 체크 -->
+    <select id="findByToken" resultMap="QrTokenMap">
+        SELECT TOKEN_ID,
+               TOKEN,
+               TO_CHAR(EXPIRES_AT, 'YYYY-MM-DD HH24:MI:SS') AS EXPIRES_AT,
+               TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
+        FROM QR_TOKEN
+        WHERE TOKEN = #{token}
+          AND EXPIRES_AT > SYSDATE
+    </select>
+
+    <!-- 만료된 토큰 정리 -->
+    <delete id="deleteExpired">
+        DELETE FROM QR_TOKEN WHERE EXPIRES_AT &lt;= SYSDATE
+    </delete>
+
+</mapper>

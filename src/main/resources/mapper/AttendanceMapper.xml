@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.emp.mapper.AttendanceMapper">
+
+    <resultMap id="AttendanceMap" type="com.example.emp.model.Attendance">
+        <id     property="attendId"    column="ATTEND_ID"/>
+        <result property="empno"       column="EMPNO"/>
+        <result property="ename"       column="ENAME"/>
+        <result property="dname"       column="DNAME"/>
+        <result property="workDate"    column="WORK_DATE"/>
+        <result property="checkIn"     column="CHECK_IN"/>
+        <result property="checkOut"    column="CHECK_OUT"/>
+        <result property="workMinutes" column="WORK_MINUTES"/>
+        <result property="status"      column="STATUS"/>
+        <result property="note"        column="NOTE"/>
+        <result property="createdAt"   column="CREATED_AT"/>
+    </resultMap>
+
+    <!-- 오늘 출근 기록 조회 -->
+    <select id="findTodayByEmpno" resultMap="AttendanceMap">
+        SELECT A.ATTEND_ID,
+               A.EMPNO,
+               E.ENAME,
+               D.DNAME,
+               TO_CHAR(A.WORK_DATE, 'YYYY-MM-DD')  AS WORK_DATE,
+               TO_CHAR(A.CHECK_IN,  'HH24:MI')     AS CHECK_IN,
+               TO_CHAR(A.CHECK_OUT, 'HH24:MI')     AS CHECK_OUT,
+               A.WORK_MINUTES,
+               A.STATUS,
+               A.NOTE,
+               TO_CHAR(A.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
+        FROM ATTENDANCE A
+        JOIN EMP  E ON A.EMPNO  = E.EMPNO
+        JOIN DEPT D ON E.DEPTNO = D.DEPTNO
+        WHERE A.EMPNO = #{empno}
+          AND TRUNC(A.WORK_DATE) = TRUNC(SYSDATE)
+    </select>
+
+    <!-- 출근 기록 삽입 (CHECK_IN 시간 기준 상태 자동 판단) -->
+    <insert id="insertCheckIn" parameterType="com.example.emp.model.Attendance">
+        INSERT INTO ATTENDANCE (ATTEND_ID, EMPNO, WORK_DATE, CHECK_IN, STATUS, CREATED_AT)
+        VALUES (
+            ATTENDANCE_SEQ.NEXTVAL,
+            #{empno},
+            TRUNC(SYSDATE),
+            SYSDATE,
+            CASE
+                WHEN TO_NUMBER(TO_CHAR(SYSDATE, 'HH24')) * 60
+                   + TO_NUMBER(TO_CHAR(SYSDATE, 'MI')) > 9 * 60
+                THEN 'LATE'
+                ELSE 'NORMAL'
+            END,
+            SYSDATE
+        )
+    </insert>
+
+    <!-- 퇴근 업데이트 (WORK_MINUTES 자동 계산, EARLY_LEAVE 판단) -->
+    <update id="updateCheckOut">
+        UPDATE ATTENDANCE
+        SET CHECK_OUT    = SYSDATE,
+            WORK_MINUTES = ROUND((SYSDATE - CHECK_IN) * 24 * 60),
+            STATUS       = CASE
+                               WHEN STATUS = 'LATE' THEN 'LATE'
+                               WHEN TO_NUMBER(TO_CHAR(SYSDATE, 'HH24')) * 60
+                                  + TO_NUMBER(TO_CHAR(SYSDATE, 'MI')) &lt; 18 * 60
+                               THEN 'EARLY_LEAVE'
+                               ELSE 'NORMAL'
+                           END
+        WHERE EMPNO = #{empno}
+          AND TRUNC(WORK_DATE) = TRUNC(SYSDATE)
+          AND CHECK_OUT IS NULL
+    </update>
+
+    <!-- 직원 월별 기록 -->
+    <select id="findByEmpnoAndMonth" resultMap="AttendanceMap">
+        SELECT A.ATTEND_ID,
+               A.EMPNO,
+               E.ENAME,
+               D.DNAME,
+               TO_CHAR(A.WORK_DATE, 'YYYY-MM-DD')  AS WORK_DATE,
+               TO_CHAR(A.CHECK_IN,  'HH24:MI')     AS CHECK_IN,
+               TO_CHAR(A.CHECK_OUT, 'HH24:MI')     AS CHECK_OUT,
+               A.WORK_MINUTES,
+               A.STATUS,
+               A.NOTE,
+               TO_CHAR(A.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
+        FROM ATTENDANCE A
+        JOIN EMP  E ON A.EMPNO  = E.EMPNO
+        JOIN DEPT D ON E.DEPTNO = D.DEPTNO
+        WHERE A.EMPNO = #{empno}
+          AND TO_CHAR(A.WORK_DATE, 'YYYY-MM') = #{month}
+        ORDER BY A.WORK_DATE DESC
+    </select>
+
+    <!-- 관리자 전체 조회 -->
+    <select id="findAll" resultMap="AttendanceMap">
+        SELECT A.ATTEND_ID,
+               A.EMPNO,
+               E.ENAME,
+               D.DNAME,
+               TO_CHAR(A.WORK_DATE, 'YYYY-MM-DD')  AS WORK_DATE,
+               TO_CHAR(A.CHECK_IN,  'HH24:MI')     AS CHECK_IN,
+               TO_CHAR(A.CHECK_OUT, 'HH24:MI')     AS CHECK_OUT,
+               A.WORK_MINUTES,
+               A.STATUS,
+               A.NOTE,
+               TO_CHAR(A.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
+        FROM ATTENDANCE A
+        JOIN EMP  E ON A.EMPNO  = E.EMPNO
+        JOIN DEPT D ON E.DEPTNO = D.DEPTNO
+        <where>
+            <if test="date != null and date != ''">
+                AND TO_CHAR(A.WORK_DATE, 'YYYY-MM-DD') = #{date}
+            </if>
+            <if test="deptno != null">
+                AND E.DEPTNO = #{deptno}
+            </if>
+        </where>
+        ORDER BY A.WORK_DATE DESC, E.ENAME
+    </select>
+
+    <!-- 오늘 전체 출근 현황 -->
+    <select id="findTodayAll" resultMap="AttendanceMap">
+        SELECT A.ATTEND_ID,
+               A.EMPNO,
+               E.ENAME,
+               D.DNAME,
+               TO_CHAR(A.WORK_DATE, 'YYYY-MM-DD')  AS WORK_DATE,
+               TO_CHAR(A.CHECK_IN,  'HH24:MI')     AS CHECK_IN,
+               TO_CHAR(A.CHECK_OUT, 'HH24:MI')     AS CHECK_OUT,
+               A.WORK_MINUTES,
+               A.STATUS,
+               A.NOTE,
+               TO_CHAR(A.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
+        FROM ATTENDANCE A
+        JOIN EMP  E ON A.EMPNO  = E.EMPNO
+        JOIN DEPT D ON E.DEPTNO = D.DEPTNO
+        WHERE TRUNC(A.WORK_DATE) = TRUNC(SYSDATE)
+        ORDER BY A.CHECK_IN DESC
+    </select>
+
+</mapper>
