@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.FileFolderMapper">
+
+    <resultMap id="rm" type="com.example.emp.model.FileFolder">
+        <id     property="folderId"      column="FOLDER_ID"/>
+        <result property="folderName"    column="FOLDER_NAME"/>
+        <result property="parentId"      column="PARENT_ID"/>
+        <result property="scope"         column="SCOPE"/>
+        <result property="deptno"        column="DEPTNO"/>
+        <result property="creator"       column="CREATOR"/>
+        <result property="creatorName"   column="CREATOR_NAME"/>
+        <result property="createdAt"     column="CREATED_AT_STR"/>
+        <result property="fileCount"     column="FILE_COUNT"/>
+        <result property="subFolderCount" column="SUB_FOLDER_COUNT"/>
+    </resultMap>
+
+    <!-- 공통 SELECT -->
+    <sql id="cols">
+        FF.FOLDER_ID, FF.FOLDER_NAME, FF.PARENT_ID, FF.SCOPE, FF.DEPTNO,
+        FF.CREATOR, FF.CREATOR_NAME,
+        TO_CHAR(FF.CREATED_AT, 'YYYY-MM-DD HH24:MI') AS CREATED_AT_STR,
+        (SELECT COUNT(*) FROM FILE_SHARE FS WHERE FS.FOLDER_ID = FF.FOLDER_ID) AS FILE_COUNT,
+        (SELECT COUNT(*) FROM FILE_FOLDER SF WHERE SF.PARENT_ID = FF.FOLDER_ID) AS SUB_FOLDER_COUNT
+    </sql>
+
+    <!-- 단건 -->
+    <select id="findById" resultMap="rm">
+        SELECT <include refid="cols"/>
+        FROM FILE_FOLDER FF
+        WHERE FF.FOLDER_ID = #{folderId}
+    </select>
+
+    <!-- 루트 폴더 목록 -->
+    <select id="findRootFolders" resultMap="rm">
+        SELECT <include refid="cols"/>
+        FROM FILE_FOLDER FF
+        <where>
+            FF.PARENT_ID IS NULL
+            <if test="scope != null and scope != ''">AND FF.SCOPE = #{scope}</if>
+            <if test="deptno != null">AND FF.DEPTNO = #{deptno}</if>
+        </where>
+        ORDER BY FF.FOLDER_NAME ASC
+    </select>
+
+    <!-- 하위 폴더 목록 -->
+    <select id="findByParentId" resultMap="rm">
+        SELECT <include refid="cols"/>
+        FROM FILE_FOLDER FF
+        <where>
+            FF.PARENT_ID = #{parentId}
+            <if test="scope != null and scope != ''">AND FF.SCOPE = #{scope}</if>
+            <if test="deptno != null">AND FF.DEPTNO = #{deptno}</if>
+        </where>
+        ORDER BY FF.FOLDER_NAME ASC
+    </select>
+
+    <!-- 삽입 -->
+    <insert id="insert">
+        INSERT INTO FILE_FOLDER
+            (FOLDER_ID, FOLDER_NAME, PARENT_ID, SCOPE, DEPTNO,
+             CREATOR, CREATOR_NAME, CREATED_AT)
+        VALUES
+            (FILE_FOLDER_SEQ.NEXTVAL, #{folderName}, #{parentId}, #{scope}, #{deptno},
+             #{creator}, #{creatorName}, SYSDATE)
+    </insert>
+
+    <!-- 이름 변경 -->
+    <update id="updateName">
+        UPDATE FILE_FOLDER
+        SET FOLDER_NAME = #{folderName}
+        WHERE FOLDER_ID = #{folderId}
+    </update>
+
+    <!-- 파일 폴더 연결 해제 (폴더 삭제 전) -->
+    <update id="clearFolderFiles">
+        UPDATE FILE_SHARE SET FOLDER_ID = NULL WHERE FOLDER_ID = #{folderId}
+    </update>
+
+    <!-- 삭제 -->
+    <delete id="deleteById">
+        DELETE FROM FILE_FOLDER WHERE FOLDER_ID = #{folderId}
+    </delete>
+
+</mapper>

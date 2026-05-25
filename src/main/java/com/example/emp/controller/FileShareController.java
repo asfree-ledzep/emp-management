@@ -33,26 +33,30 @@ public class FileShareController {
     // ── 사원: 목록 조회 ──
     // scope=ALL → 전체 공유 폴더
     // scope=DEPT → 본인 부서 폴더
+    // folderId=N → 해당 폴더 내 파일 (null = 루트)
     @GetMapping
-    public List<FileShare> list(@RequestParam String scope, Authentication auth) {
+    public List<FileShare> list(@RequestParam String scope,
+                                @RequestParam(required = false) Long folderId,
+                                Authentication auth) {
         if ("ALL".equals(scope)) {
-            return fileShareService.findByScope("ALL");
+            return fileShareService.findByScope("ALL", folderId);
         }
         // DEPT: 본인 부서 자동 판별
         Integer empno = Integer.parseInt(auth.getName());
         Emp emp = empMapper.findById(empno);
         if (emp == null || emp.getDeptno() == null) return List.of();
-        return fileShareService.findByDeptno(emp.getDeptno());
+        return fileShareService.findByDeptno(emp.getDeptno(), folderId);
     }
 
-    // ── 관리자: 전체 목록 (scope/deptno 필터 가능) ──
+    // ── 관리자: 전체 목록 (scope/deptno/folderId 필터 가능) ──
     @GetMapping("/admin/all")
     public List<FileShare> adminAll(
             @RequestParam(required = false) String  scope,
             @RequestParam(required = false) Integer deptno,
+            @RequestParam(required = false) Long    folderId,
             Authentication auth) {
         checkAdmin(auth);
-        return fileShareService.findForAdmin(scope, deptno);
+        return fileShareService.findForAdmin(scope, deptno, folderId);
     }
 
     // ── 파일 업로드 ──
@@ -61,6 +65,7 @@ public class FileShareController {
             @RequestParam MultipartFile              file,
             @RequestParam String                     scope,
             @RequestParam(required = false) Integer  deptno,
+            @RequestParam(required = false) Long     folderId,
             Authentication auth) {
 
         if (!fileShareService.isR2Ready()) {
@@ -87,12 +92,22 @@ public class FileShareController {
         }
 
         try {
-            fileShareService.upload(file, scope, actualDeptno, uploader, uploaderName);
+            fileShareService.upload(file, scope, actualDeptno, uploader, uploaderName, folderId);
             return ResponseEntity.ok(Map.of("result", "ok"));
         } catch (Exception e) {
             return ResponseEntity.status(500)
                     .body(Map.of("error", "업로드 실패: " + e.getMessage()));
         }
+    }
+
+    // ── 파일 폴더 이동 ──
+    @PatchMapping("/{id}/move")
+    public ResponseEntity<?> moveToFolder(@PathVariable Long id,
+                                          @RequestBody Map<String, Object> body) {
+        Long folderId = body.get("folderId") != null
+                ? Long.valueOf(body.get("folderId").toString()) : null;
+        fileShareService.moveToFolder(id, folderId);
+        return ResponseEntity.ok(Map.of("result", "ok"));
     }
 
     // ── 파일 다운로드 (서버 스트리밍) ──

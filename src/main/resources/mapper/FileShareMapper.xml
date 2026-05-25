@@ -16,12 +16,13 @@
         <result property="uploader"     column="UPLOADER"/>
         <result property="uploaderName" column="UPLOADER_NAME"/>
         <result property="createdAt"    column="CREATED_AT_STR"/>
+        <result property="folderId"     column="FOLDER_ID"/>
     </resultMap>
 
     <!-- 공통 SELECT 컬럼 -->
     <sql id="cols">
         FS.FILE_ID, FS.FILE_NAME, FS.R2_KEY, FS.FILE_SIZE, FS.MIME_TYPE,
-        FS.SCOPE, FS.DEPTNO, FS.UPLOADER, FS.UPLOADER_NAME,
+        FS.SCOPE, FS.DEPTNO, FS.UPLOADER, FS.UPLOADER_NAME, FS.FOLDER_ID,
         TO_CHAR(FS.CREATED_AT, 'YYYY-MM-DD HH24:MI') AS CREATED_AT_STR,
         D.DNAME
     </sql>
@@ -34,21 +35,33 @@
         WHERE FS.FILE_ID = #{fileId}
     </select>
 
-    <!-- 전체 공유 파일 -->
+    <!-- 전체 공유 파일 (folderId 필터) -->
     <select id="findByScope" resultMap="rm">
         SELECT <include refid="cols"/>
         FROM FILE_SHARE FS
         LEFT JOIN DEPT D ON FS.DEPTNO = D.DEPTNO
         WHERE FS.SCOPE = #{scope}
+          AND (
+            <choose>
+              <when test="folderId != null">FS.FOLDER_ID = #{folderId}</when>
+              <otherwise>FS.FOLDER_ID IS NULL</otherwise>
+            </choose>
+          )
         ORDER BY FS.CREATED_AT DESC
     </select>
 
-    <!-- 부서별 파일 -->
+    <!-- 부서별 파일 (folderId 필터) -->
     <select id="findByDeptno" resultMap="rm">
         SELECT <include refid="cols"/>
         FROM FILE_SHARE FS
         LEFT JOIN DEPT D ON FS.DEPTNO = D.DEPTNO
         WHERE FS.SCOPE = 'DEPT' AND FS.DEPTNO = #{deptno}
+          AND (
+            <choose>
+              <when test="folderId != null">FS.FOLDER_ID = #{folderId}</when>
+              <otherwise>FS.FOLDER_ID IS NULL</otherwise>
+            </choose>
+          )
         ORDER BY FS.CREATED_AT DESC
     </select>
 
@@ -60,6 +73,10 @@
         <where>
             <if test="scope != null and scope != ''">AND FS.SCOPE = #{scope}</if>
             <if test="deptno != null">AND FS.DEPTNO = #{deptno}</if>
+            <choose>
+              <when test="folderId != null">AND FS.FOLDER_ID = #{folderId}</when>
+              <otherwise>AND FS.FOLDER_ID IS NULL</otherwise>
+            </choose>
         </where>
         ORDER BY FS.CREATED_AT DESC
     </select>
@@ -68,11 +85,16 @@
     <insert id="insert">
         INSERT INTO FILE_SHARE
             (FILE_ID, FILE_NAME, R2_KEY, FILE_SIZE, MIME_TYPE,
-             SCOPE, DEPTNO, UPLOADER, UPLOADER_NAME, CREATED_AT)
+             SCOPE, DEPTNO, UPLOADER, UPLOADER_NAME, FOLDER_ID, CREATED_AT)
         VALUES
             (FILE_SHARE_SEQ.NEXTVAL, #{fileName}, #{r2Key}, #{fileSize}, #{mimeType},
-             #{scope}, #{deptno}, #{uploader}, #{uploaderName}, SYSDATE)
+             #{scope}, #{deptno}, #{uploader}, #{uploaderName}, #{folderId}, SYSDATE)
     </insert>
+
+    <!-- 파일 폴더 이동 -->
+    <update id="moveToFolder">
+        UPDATE FILE_SHARE SET FOLDER_ID = #{folderId} WHERE FILE_ID = #{fileId}
+    </update>
 
     <!-- 삭제 -->
     <delete id="deleteById">

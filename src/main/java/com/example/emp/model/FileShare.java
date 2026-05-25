@@ -18,4 +18,5 @@ public class FileShare {
     private String  uploader;      // empno 문자열 or 'admin'
     private String  uploaderName;  // 표시용 이름
     private String  createdAt;     // TO_CHAR 포맷
+    private Long    folderId;      // 속한 폴더 ID (null = 루트)
 }

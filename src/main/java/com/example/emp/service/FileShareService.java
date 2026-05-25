@@ -19,7 +19,7 @@ public class FileShareService {
 
     // ── 업로드 ──
     public void upload(MultipartFile file, String scope, Integer deptno,
-                       String uploader, String uploaderName) throws IOException {
+                       String uploader, String uploaderName, Long folderId) throws IOException {
         // R2 키: shared/ALL/{uuid}_{name} 또는 shared/DEPT/{deptno}/{uuid}_{name}
         String uuid     = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         String safeName = file.getOriginalFilename()
@@ -39,6 +39,7 @@ public class FileShareService {
         fs.setDeptno(deptno);
         fs.setUploader(uploader);
         fs.setUploaderName(uploaderName);
+        fs.setFolderId(folderId);
         mapper.insert(fs);
     }
 
@@ -54,16 +55,21 @@ public class FileShareService {
     }
 
     // ── 목록 조회 ──
-    public List<FileShare> findByScope(String scope) {
-        return mapper.findByScope(scope);
+    public List<FileShare> findByScope(String scope, Long folderId) {
+        return mapper.findByScope(scope, folderId);
     }
 
-    public List<FileShare> findByDeptno(Integer deptno) {
-        return mapper.findByDeptno(deptno);
+    public List<FileShare> findByDeptno(Integer deptno, Long folderId) {
+        return mapper.findByDeptno(deptno, folderId);
     }
 
-    public List<FileShare> findForAdmin(String scope, Integer deptno) {
-        return mapper.findAllAdmin(scope, deptno);
+    public List<FileShare> findForAdmin(String scope, Integer deptno, Long folderId) {
+        return mapper.findAllAdmin(scope, deptno, folderId);
+    }
+
+    // ── 파일 폴더 이동 ──
+    public void moveToFolder(Long fileId, Long folderId) {
+        mapper.moveToFolder(fileId, folderId);
     }
 
     // ── 삭제 ──
