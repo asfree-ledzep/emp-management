@@ -67,22 +67,42 @@ public class DmController {
         return dmMapper.findPartnerEmpnos(myEmpno);
     }
 
-    /** 직원 이름 검색 (name 미입력 시 전체 반환) */
+    /**
+     * 직원 이름 검색 (name 미입력 시 전체 반환)
+     * myEmpno 전달 시 대화 파트너 목록도 함께 반환:
+     *   - partnerOrder: 최근 대화 순 번호 (0 = 가장 최근, -1 = 대화 없음)
+     *   - isPartner: 대화 이력 존재 여부
+     */
     @GetMapping("/api/employees/search")
     @ResponseBody
-    public List<Map<String, Object>> searchEmps(
-            @RequestParam(defaultValue = "") String name) {
-        return empMapper.findAll().stream()
+    public Map<String, Object> searchEmps(
+            @RequestParam(defaultValue = "") String name,
+            @RequestParam(required = false) Integer myEmpno) {
+
+        // 대화 파트너 목록 (최근 순)
+        List<Integer> partners = (myEmpno != null)
+                ? dmMapper.findPartnerEmpnos(myEmpno)
+                : List.of();
+
+        List<Map<String, Object>> emps = empMapper.findAll().stream()
                 .filter(e -> name.isEmpty() ||
                         (e.getEname() != null && e.getEname().contains(name)))
                 .map(e -> {
+                    int partnerIdx = partners.indexOf(e.getEmpno()); // -1 이면 대화 없음
                     Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("empno",    e.getEmpno());
-                    m.put("ename",    e.getEname()    != null ? e.getEname()    : "");
-                    m.put("job",      e.getJob()      != null ? e.getJob()      : "");
-                    m.put("photoUrl", e.getPhotoUrl() != null ? e.getPhotoUrl() : "");
+                    m.put("empno",       e.getEmpno());
+                    m.put("ename",       e.getEname()    != null ? e.getEname()    : "");
+                    m.put("job",         e.getJob()      != null ? e.getJob()      : "");
+                    m.put("photoUrl",    e.getPhotoUrl() != null ? e.getPhotoUrl() : "");
+                    m.put("isPartner",   partnerIdx >= 0);
+                    m.put("partnerOrder", partnerIdx);   // 낮을수록 최근
                     return m;
                 })
                 .collect(Collectors.toList());
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("employees", emps);
+        result.put("partnerEmpnos", partners);   // 정렬용 순서 배열
+        return result;
     }
 }
