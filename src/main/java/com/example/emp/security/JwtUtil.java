@@ -12,6 +12,8 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(JwtUtil.class);
+
     @Value("${jwt.secret}")
     private String secret;
 
@@ -45,6 +47,7 @@ public class JwtUtil {
             Jwts.parser().verifyWith(getKey()).build().parseSignedClaims(token);
             return true;
         } catch (Exception e) {
+            log.warn("[JWT] 토큰 검증 실패: {} - {}", e.getClass().getSimpleName(), e.getMessage());
             return false;
         }
     }
