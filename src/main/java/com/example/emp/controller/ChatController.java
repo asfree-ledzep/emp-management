@@ -4,6 +4,7 @@ import com.example.emp.mapper.ChatMapper;
 import com.example.emp.model.ChatMessage;
 import com.example.emp.service.S3Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -57,19 +58,23 @@ public class ChatController {
 
     /* ── 전체채팅 이력 조회 ── */
     @GetMapping("/api/chat/history")
-    @ResponseBody
-    public List<ChatMessage> history(
+    public ResponseEntity<List<ChatMessage>> history(
             @RequestParam(defaultValue = "50") int limit) {
-        return chatMapper.findRecent(limit);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate")
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(chatMapper.findRecent(limit));
     }
 
     /* ── 부서채팅 이력 조회 ── */
     @GetMapping("/api/chat/dept/history")
-    @ResponseBody
-    public List<ChatMessage> deptHistory(
+    public ResponseEntity<List<ChatMessage>> deptHistory(
             @RequestParam int deptno,
             @RequestParam(defaultValue = "50") int limit) {
-        return chatMapper.findRecentDept(deptno, limit);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate")
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(chatMapper.findRecentDept(deptno, limit));
     }
 
     /* ── 채팅 파일 업로드 → S3 저장 → { url, fileName } 반환 ── */
