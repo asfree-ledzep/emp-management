@@ -73,6 +73,24 @@ public class S3Service {
         return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
     }
 
+    // 채팅 첨부파일 업로드 (chat/emp-{empno}/{timestamp}_{filename})
+    public String uploadChatFile(Integer empno, MultipartFile file) throws IOException {
+        String original = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
+        String ext      = getExtension(original);
+        String key      = "chat/emp-" + empno + "/" + System.currentTimeMillis() + "_" + original;
+
+        s3Client.putObject(
+                PutObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(key)
+                        .contentType(file.getContentType() != null ? file.getContentType() : "application/octet-stream")
+                        .build(),
+                RequestBody.fromInputStream(file.getInputStream(), file.getSize())
+        );
+
+        return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
+    }
+
     // S3 사진 삭제 (URL에서 키 추출)
     public void deletePhoto(String photoUrl) {
         try {

@@ -58,12 +58,15 @@ public class AuthController {
                 Emp emp     = empMapper.findById(empno);
                 String name = (emp != null && emp.getEname() != null) ? emp.getEname() : id;
                 String token = jwtUtil.generateToken(id, "USER");
-                return ResponseEntity.ok(Map.of(
-                        "token",    token,
-                        "username", name,
-                        "role",     "USER",
-                        "empno",    empno
-                ));
+                java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+                body.put("token",    token);
+                body.put("username", name);
+                body.put("role",     "USER");
+                body.put("empno",    empno);
+                if (emp != null && emp.getDeptno() != null) {
+                    body.put("deptno", emp.getDeptno());
+                }
+                return ResponseEntity.ok(body);
             }
         } catch (NumberFormatException ignored) {}
 

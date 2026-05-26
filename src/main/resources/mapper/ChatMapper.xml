@@ -6,23 +6,44 @@
     <resultMap id="ChatMap" type="com.example.emp.model.ChatMessage">
         <id     property="msgId"      column="MSG_ID"/>
         <result property="empno"      column="EMPNO"/>
+        <result property="deptno"     column="DEPTNO"/>
         <result property="senderName" column="SENDER_NAME"/>
         <result property="content"    column="CONTENT"/>
         <result property="sentAt"     column="SENT_AT"/>
     </resultMap>
 
-    <!-- 메시지 저장 -->
+    <!-- 전체채팅 저장 (DEPTNO = NULL) -->
     <insert id="insert" parameterType="com.example.emp.model.ChatMessage">
         INSERT INTO CHAT_MESSAGE (MSG_ID, EMPNO, SENDER_NAME, CONTENT, SENT_AT)
         VALUES (CHAT_MSG_SEQ.NEXTVAL, #{empno}, #{senderName}, #{content}, SYSDATE + 9/24)
     </insert>
 
-    <!-- 최근 N건 조회 (오래된 순으로 반환) -->
+    <!-- 부서채팅 저장 (DEPTNO 포함) -->
+    <insert id="insertDept" parameterType="com.example.emp.model.ChatMessage">
+        INSERT INTO CHAT_MESSAGE (MSG_ID, EMPNO, DEPTNO, SENDER_NAME, CONTENT, SENT_AT)
+        VALUES (CHAT_MSG_SEQ.NEXTVAL, #{empno}, #{deptno}, #{senderName}, #{content}, SYSDATE + 9/24)
+    </insert>
+
+    <!-- 전체채팅 최근 N건 (DEPTNO IS NULL, 오래된 순 반환) -->
     <select id="findRecent" resultMap="ChatMap">
-        SELECT MSG_ID, EMPNO, SENDER_NAME, CONTENT,
+        SELECT MSG_ID, EMPNO, DEPTNO, SENDER_NAME, CONTENT,
                TO_CHAR(SENT_AT, 'HH24:MI') AS SENT_AT
         FROM (
             SELECT * FROM CHAT_MESSAGE
+            WHERE DEPTNO IS NULL
+            ORDER BY MSG_ID DESC
+        )
+        WHERE ROWNUM &lt;= #{limit}
+        ORDER BY MSG_ID ASC
+    </select>
+
+    <!-- 부서채팅 최근 N건 (DEPTNO = ?, 오래된 순 반환) -->
+    <select id="findRecentDept" resultMap="ChatMap">
+        SELECT MSG_ID, EMPNO, DEPTNO, SENDER_NAME, CONTENT,
+               TO_CHAR(SENT_AT, 'HH24:MI') AS SENT_AT
+        FROM (
+            SELECT * FROM CHAT_MESSAGE
+            WHERE DEPTNO = #{deptno}
             ORDER BY MSG_ID DESC
         )
         WHERE ROWNUM &lt;= #{limit}

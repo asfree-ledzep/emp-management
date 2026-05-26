@@ -9,9 +9,15 @@ import java.util.List;
 @Mapper
 public interface ChatMapper {
 
-    /** 메시지 저장 */
+    /** 전체채팅 저장 (DEPTNO = NULL) */
     void insert(ChatMessage message);
 
-    /** 최근 N건 조회 (오래된 순) */
+    /** 부서채팅 저장 (DEPTNO 포함) */
+    void insertDept(ChatMessage message);
+
+    /** 전체채팅 최근 N건 조회 (오래된 순) */
     List<ChatMessage> findRecent(@Param("limit") int limit);
+
+    /** 부서채팅 최근 N건 조회 (오래된 순) */
+    List<ChatMessage> findRecentDept(@Param("deptno") int deptno, @Param("limit") int limit);
 }
