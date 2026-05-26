@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.emp.mapper.AdminMapper">
+
+    <!-- 관리자 프로필 조회 -->
+    <select id="findProfile" resultType="com.example.emp.model.AdminProfile">
+        SELECT DISPLAY_NAME  AS displayName,
+               EMPNO_DISPLAY AS empnoDisplay,
+               DEPTNO        AS deptno,
+               PW_HASH       AS pwHash
+        FROM ADMIN_PROFILE
+        WHERE ID = 1
+    </select>
+
+    <!-- 관리자 프로필 저장 (MERGE) -->
+    <insert id="upsertProfile" parameterType="com.example.emp.model.AdminProfile">
+        MERGE INTO ADMIN_PROFILE dst
+        USING (SELECT 1 AS ID FROM DUAL) src
+        ON (dst.ID = src.ID)
+        WHEN MATCHED THEN
+            UPDATE SET
+                DISPLAY_NAME  = #{displayName},
+                EMPNO_DISPLAY = #{empnoDisplay},
+                DEPTNO        = #{deptno},
+                PW_HASH       = CASE WHEN #{pwHash,jdbcType=VARCHAR} IS NOT NULL
+                                     THEN #{pwHash,jdbcType=VARCHAR}
+                                     ELSE dst.PW_HASH END
+        WHEN NOT MATCHED THEN
+            INSERT (ID, DISPLAY_NAME, EMPNO_DISPLAY, DEPTNO, PW_HASH)
+            VALUES (1, #{displayName}, #{empnoDisplay}, #{deptno}, #{pwHash,jdbcType=VARCHAR})
+    </insert>
+
+    <!-- 대리 관리자 목록 -->
+    <select id="findProxyAdmins" resultType="java.util.Map">
+        SELECT pa.EMPNO                                             AS empno,
+               e.ENAME                                             AS ename,
+               TO_CHAR(pa.CREATED_AT, 'YYYY-MM-DD HH24:MI')       AS createdAt
+        FROM PROXY_ADMIN pa
+        LEFT JOIN EMP e ON e.EMPNO = pa.EMPNO
+        ORDER BY pa.CREATED_AT DESC
+    </select>
+
+    <!-- 대리 관리자 추가 -->
+    <insert id="addProxyAdmin">
+        MERGE INTO PROXY_ADMIN dst
+        USING (SELECT #{empno} AS EMPNO FROM DUAL) src
+        ON (dst.EMPNO = src.EMPNO)
+        WHEN NOT MATCHED THEN
+            INSERT (EMPNO, CREATED_AT) VALUES (#{empno}, SYSDATE)
+    </insert>
+
+    <!-- 대리 관리자 제거 -->
+    <delete id="removeProxyAdmin">
+        DELETE FROM PROXY_ADMIN WHERE EMPNO = #{empno}
+    </delete>
+
+    <!-- 대리 관리자 여부 -->
+    <select id="isProxyAdmin" resultType="boolean">
+        SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+        FROM PROXY_ADMIN
+        WHERE EMPNO = #{empno}
+    </select>
+
+</mapper>

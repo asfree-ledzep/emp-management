@@ -1,8 +1,10 @@
 package com.example.emp.controller;
 
+import com.example.emp.mapper.AdminMapper;
 import com.example.emp.mapper.DeptMapper;
 import com.example.emp.mapper.EmpAuthMapper;
 import com.example.emp.mapper.EmpMapper;
+import com.example.emp.model.AdminProfile;
 import com.example.emp.model.Dept;
 import com.example.emp.model.EmpAuth;
 import com.example.emp.model.Emp;
@@ -29,33 +31,58 @@ public class AuthController {
     @Value("${admin.password}")
     private String adminPassword;
 
-    @Autowired private JwtUtil        jwtUtil;
+    @Autowired private JwtUtil         jwtUtil;
     @Autowired private PasswordEncoder passwordEncoder;
-    @Autowired private EmpAuthMapper  empAuthMapper;
-    @Autowired private EmpMapper      empMapper;
-    @Autowired private DeptMapper     deptMapper;
+    @Autowired private EmpAuthMapper   empAuthMapper;
+    @Autowired private EmpMapper       empMapper;
+    @Autowired private DeptMapper      deptMapper;
+    @Autowired private AdminMapper     adminMapper;
 
     // POST /api/auth/login
-    // 관리자: 아이디/비밀번호
-    // 일반사원: 사번(숫자)/개인 비밀번호
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
         String id = req.getUsername();
         String pw = req.getPassword();
 
-        // 1. 관리자 계정 확인
-        if (adminUsername.equals(id) && adminPassword.equals(pw)) {
-            String token = jwtUtil.generateToken(id, "ADMIN");
-            return ResponseEntity.ok(Map.of(
-                    "token",    token,
-                    "username", id,
-                    "role",     "ADMIN"
-            ));
+        // ── 1. 관리자 계정 (DB 비번 오버라이드 > 환경변수 순) ──────────────────
+        if (adminUsername.equals(id)) {
+            AdminProfile profile = safeGetProfile();
+            boolean pwMatch;
+            if (profile != null && profile.getPwHash() != null) {
+                pwMatch = passwordEncoder.matches(pw, profile.getPwHash());
+            } else {
+                pwMatch = adminPassword.equals(pw);
+            }
+            if (pwMatch) {
+                String displayName = (profile != null && profile.getDisplayName() != null)
+                        ? profile.getDisplayName() : id;
+                String token = jwtUtil.generateToken(id, "ADMIN");
+                return ResponseEntity.ok(Map.of(
+                        "token",    token,
+                        "username", displayName,
+                        "role",     "ADMIN"
+                ));
+            }
         }
 
-        // 2. 사원 계정 확인 (사번으로 로그인)
+        // ── 2. 사번 기반 로그인 (대리 관리자 / 일반 사원) ────────────────────────
         try {
-            Integer empno   = Integer.parseInt(id);
+            Integer empno = Integer.parseInt(id);
+
+            // 2a. 대리 관리자 확인 (사번 + "admin1234")
+            if ("admin1234".equals(pw) && adminMapper.isProxyAdmin(empno)) {
+                Emp emp = empMapper.findById(empno);
+                String name = (emp != null && emp.getEname() != null) ? emp.getEname() : id;
+                String token = jwtUtil.generateToken(id, "ADMIN");
+                java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+                body.put("token",    token);
+                body.put("username", name);
+                body.put("role",     "ADMIN");
+                body.put("isProxy",  true);
+                return ResponseEntity.ok(body);
+            }
+
+            // 2b. 일반 사원 로그인
             EmpAuth empAuth = empAuthMapper.findByEmpno(empno);
             if (empAuth != null && passwordEncoder.matches(pw, empAuth.getPassword())) {
                 Emp emp     = empMapper.findById(empno);
@@ -83,7 +110,6 @@ public class AuthController {
     }
 
     // POST /api/auth/set-password  (관리자 전용)
-    // 사원의 초기 비밀번호 등록 또는 재설정
     @PostMapping("/set-password")
     public ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest req) {
         if (!isAdmin()) {
@@ -103,5 +129,11 @@ public class AuthController {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null && auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    /** ADMIN_PROFILE 테이블 조회 실패 시 null 반환 (테이블 미생성 대비) */
+    private AdminProfile safeGetProfile() {
+        try { return adminMapper.findProfile(); }
+        catch (Exception e) { return null; }
     }
 }
