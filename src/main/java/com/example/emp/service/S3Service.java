@@ -10,6 +10,8 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Service
 public class S3Service {
@@ -73,17 +75,24 @@ public class S3Service {
         return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
     }
 
-    // 채팅 첨부파일 업로드 (chat/emp-{empno}/{timestamp}_{filename})
+    // 채팅 첨부파일 업로드 (chat/emp-{empno}/{timestamp}_{safeFilename})
     public String uploadChatFile(Integer empno, MultipartFile file) throws IOException {
-        String original = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
-        String ext      = getExtension(original);
-        String key      = "chat/emp-" + empno + "/" + System.currentTimeMillis() + "_" + original;
+        String original    = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
+        // S3 키: 한글·공백·특수문자 → '_' 치환 (URL 안전)
+        String safeFilename = original.replaceAll("[^a-zA-Z0-9._\\-]", "_");
+        String key          = "chat/emp-" + empno + "/" + System.currentTimeMillis() + "_" + safeFilename;
+
+        // Content-Disposition: 브라우저가 다운로드로 처리하도록 강제
+        // RFC 5987: filename*=UTF-8''... 으로 한글 원본 파일명을 다운로드 다이얼로그에 표시
+        String encodedName  = URLEncoder.encode(original, StandardCharsets.UTF_8).replace("+", "%20");
+        String contentDisp  = "attachment; filename=\"" + safeFilename + "\"; filename*=UTF-8''" + encodedName;
 
         s3Client.putObject(
                 PutObjectRequest.builder()
                         .bucket(bucket)
                         .key(key)
                         .contentType(file.getContentType() != null ? file.getContentType() : "application/octet-stream")
+                        .contentDisposition(contentDisp)
                         .build(),
                 RequestBody.fromInputStream(file.getInputStream(), file.getSize())
         );

@@ -13,6 +13,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -75,6 +80,39 @@ public class ChatController {
                 .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate")
                 .header(HttpHeaders.PRAGMA, "no-cache")
                 .body(chatMapper.findRecentDept(deptno, limit));
+    }
+
+    /**
+     * 채팅 파일 다운로드 프록시
+     * S3 버킷 정책이 chat/ 경로를 막는 경우에도 백엔드를 통해 스트리밍
+     * GET /api/chat/download?url=https://...
+     */
+    @GetMapping("/api/chat/download")
+    public ResponseEntity<byte[]> downloadChatFile(@RequestParam String url) {
+        try {
+            URI uri = new URI(url);
+            // chat/ 경로만 허용 (보안: 임의 URL 프록시 방지)
+            if (!uri.getPath().contains("/chat/")) {
+                return ResponseEntity.badRequest().build();
+            }
+            try (InputStream in = uri.toURL().openStream()) {
+                byte[] data = in.readAllBytes();
+                // 파일명 추출 (URL 마지막 세그먼트에서 타임스탬프_ 제거)
+                String path     = uri.getPath();
+                String rawName  = path.substring(path.lastIndexOf('/') + 1);
+                // 타임스탬프_파일명 형식에서 파일명만 추출
+                String fileName = rawName.contains("_") ? rawName.substring(rawName.indexOf('_') + 1) : rawName;
+                String encoded  = java.net.URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION,
+                                "attachment; filename=\"" + fileName + "\"; filename*=UTF-8''" + encoded)
+                        .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                        .header(HttpHeaders.CONTENT_TYPE, "application/octet-stream")
+                        .body(data);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
     }
 
     /* ── 채팅 파일 업로드 → S3 저장 → { url, fileName } 반환 ── */
