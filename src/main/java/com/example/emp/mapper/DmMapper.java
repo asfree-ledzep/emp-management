@@ -15,4 +15,7 @@ public interface DmMapper {
             @Param("empno2") Integer empno2,
             @Param("limit")  int    limit
     );
+
+    /** 나와 1회 이상 대화한 상대 사번 목록 (최근 대화 순) */
+    List<Integer> findPartnerEmpnos(@Param("myEmpno") int myEmpno);
 }

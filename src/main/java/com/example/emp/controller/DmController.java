@@ -60,6 +60,13 @@ public class DmController {
         return dmMapper.findHistory(empno1, empno2, limit);
     }
 
+    /** 나와 대화 이력이 있는 상대 사번 목록 (최근 순) */
+    @GetMapping("/api/dm/partners")
+    @ResponseBody
+    public List<Integer> getPartners(@RequestParam int myEmpno) {
+        return dmMapper.findPartnerEmpnos(myEmpno);
+    }
+
     /** 직원 이름 검색 (name 미입력 시 전체 반환) */
     @GetMapping("/api/employees/search")
     @ResponseBody
