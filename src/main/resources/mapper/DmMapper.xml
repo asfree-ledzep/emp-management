@@ -20,19 +20,15 @@
 
     <!-- 나와 대화한 상대 사번 목록 (가장 최근 메시지 기준 내림차순) -->
     <select id="findPartnerEmpnos" resultType="java.lang.Integer">
-        SELECT PARTNER_EMPNO
-        FROM (
-            SELECT
-                CASE WHEN SENDER_EMPNO = #{myEmpno} THEN RECEIVER_EMPNO
-                     ELSE SENDER_EMPNO END AS PARTNER_EMPNO,
-                MAX(DM_ID) AS LAST_DM_ID
-            FROM DM_MESSAGE
-            WHERE SENDER_EMPNO = #{myEmpno} OR RECEIVER_EMPNO = #{myEmpno}
-            GROUP BY
-                CASE WHEN SENDER_EMPNO = #{myEmpno} THEN RECEIVER_EMPNO
-                     ELSE SENDER_EMPNO END
-        )
-        ORDER BY LAST_DM_ID DESC
+        SELECT
+            CASE WHEN SENDER_EMPNO = #{myEmpno} THEN RECEIVER_EMPNO
+                 ELSE SENDER_EMPNO END AS PARTNER_EMPNO
+        FROM DM_MESSAGE
+        WHERE SENDER_EMPNO = #{myEmpno} OR RECEIVER_EMPNO = #{myEmpno}
+        GROUP BY
+            CASE WHEN SENDER_EMPNO = #{myEmpno} THEN RECEIVER_EMPNO
+                 ELSE SENDER_EMPNO END
+        ORDER BY MAX(DM_ID) DESC
     </select>
 
     <!-- 두 사용자 간 대화 이력 (오래된 순) -->
