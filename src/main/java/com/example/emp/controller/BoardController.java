@@ -1,6 +1,8 @@
 package com.example.emp.controller;
 
+import com.example.emp.mapper.BoardCommentMapper;
 import com.example.emp.mapper.BoardMapper;
+import com.example.emp.model.BoardComment;
 import com.example.emp.model.BoardPost;
 import com.example.emp.service.S3Service;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,8 +37,9 @@ import java.util.Map;
 @RequestMapping("/api/board")
 public class BoardController {
 
-    @Autowired private BoardMapper boardMapper;
-    @Autowired private S3Service   s3Service;
+    @Autowired private BoardMapper        boardMapper;
+    @Autowired private BoardCommentMapper commentMapper;
+    @Autowired private S3Service          s3Service;
 
     /* ── 공통: 현재 사용자 empno 추출 ── */
     private Integer empno(Authentication auth) {
@@ -154,6 +157,49 @@ public class BoardController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "파일 업로드 실패: " + e.getMessage()));
         }
+    }
+
+    // ── 댓글 목록 ────────────────────────────────────────────
+    @GetMapping("/comments")
+    public ResponseEntity<List<BoardComment>> commentList(@RequestParam long postId) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(commentMapper.findByPostId(postId));
+    }
+
+    // ── 댓글 작성 ────────────────────────────────────────────
+    @PostMapping("/comments")
+    public ResponseEntity<?> commentWrite(
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        Integer empno = empno(auth);
+        if (empno == null) return ResponseEntity.status(401).build();
+
+        String contentStr = body.get("content");
+        String postIdStr  = body.get("postId");
+        if (contentStr == null || contentStr.isBlank() || postIdStr == null)
+            return ResponseEntity.badRequest().body(Map.of("message", "postId, content 필요"));
+
+        BoardComment comment = new BoardComment();
+        comment.setPostId(Long.parseLong(postIdStr));
+        comment.setEmpno(empno);
+        comment.setAuthorName(body.getOrDefault("authorName", "알 수 없음"));
+        comment.setContent(contentStr.trim());
+        commentMapper.insert(comment);
+        return ResponseEntity.ok(Map.of("result", "ok"));
+    }
+
+    // ── 댓글 삭제 (본인만) ────────────────────────────────────
+    @DeleteMapping("/comments/{id}")
+    public ResponseEntity<?> commentDelete(
+            @PathVariable long id,
+            Authentication auth) {
+        Integer empno = empno(auth);
+        if (empno == null) return ResponseEntity.status(401).build();
+        int affected = commentMapper.deleteByIdAndEmpno(id, empno);
+        return affected > 0
+                ? ResponseEntity.ok(Map.of("result", "ok"))
+                : ResponseEntity.status(403).body(Map.of("message", "삭제 권한이 없습니다."));
     }
 
     // ── 파일 다운로드 프록시 (board/ 경로만 허용) ─────────────
