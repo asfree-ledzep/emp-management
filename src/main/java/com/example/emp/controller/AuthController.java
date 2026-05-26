@@ -1,7 +1,9 @@
 package com.example.emp.controller;
 
+import com.example.emp.mapper.DeptMapper;
 import com.example.emp.mapper.EmpAuthMapper;
 import com.example.emp.mapper.EmpMapper;
+import com.example.emp.model.Dept;
 import com.example.emp.model.EmpAuth;
 import com.example.emp.model.Emp;
 import com.example.emp.model.LoginRequest;
@@ -31,6 +33,7 @@ public class AuthController {
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private EmpAuthMapper  empAuthMapper;
     @Autowired private EmpMapper      empMapper;
+    @Autowired private DeptMapper     deptMapper;
 
     // POST /api/auth/login
     // 관리자: 아이디/비밀번호
@@ -65,6 +68,10 @@ public class AuthController {
                 body.put("empno",    empno);
                 if (emp != null && emp.getDeptno() != null) {
                     body.put("deptno", emp.getDeptno());
+                    Dept dept = deptMapper.findById(emp.getDeptno());
+                    if (dept != null && dept.getDname() != null) {
+                        body.put("deptname", dept.getDname());
+                    }
                 }
                 return ResponseEntity.ok(body);
             }

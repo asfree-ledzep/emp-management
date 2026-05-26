@@ -53,9 +53,32 @@
         WHERE POST_ID = #{postId}
     </select>
 
+    <!-- 관리자 전체 게시글 목록 (최신순) -->
+    <select id="findAll" resultMap="BoardMap">
+        SELECT POST_ID, EMPNO, DEPTNO, AUTHOR_NAME, TITLE, CONTENT, FILE_URL, FILE_NAME,
+               TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI') AS CREATED_AT
+        FROM BOARD
+        ORDER BY POST_ID DESC
+    </select>
+
+    <!-- 본인 글 수정 (EMPNO 일치 확인) -->
+    <update id="updateByIdAndEmpno" parameterType="com.example.emp.model.BoardPost">
+        UPDATE BOARD
+        SET TITLE    = #{title},
+            CONTENT  = #{content},
+            FILE_URL  = #{fileUrl},
+            FILE_NAME = #{fileName}
+        WHERE POST_ID = #{postId} AND EMPNO = #{empno}
+    </update>
+
     <!-- 본인 글만 삭제 (EMPNO 일치 확인) -->
     <delete id="deleteByIdAndEmpno">
         DELETE FROM BOARD WHERE POST_ID = #{postId} AND EMPNO = #{empno}
+    </delete>
+
+    <!-- 관리자 삭제 (EMPNO 무관) -->
+    <delete id="deleteById">
+        DELETE FROM BOARD WHERE POST_ID = #{postId}
     </delete>
 
 </mapper>

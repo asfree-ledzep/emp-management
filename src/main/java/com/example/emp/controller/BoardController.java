@@ -159,6 +159,66 @@ public class BoardController {
         }
     }
 
+    // ── 전체게시판 글 수정 (본인만) ──────────────────────────
+    @PutMapping("/global/{id}")
+    public ResponseEntity<?> globalUpdate(
+            @PathVariable long id,
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        Integer empno = empno(auth);
+        if (empno == null) return ResponseEntity.status(401).build();
+        BoardPost post = new BoardPost();
+        post.setPostId(id); post.setEmpno(empno);
+        post.setTitle(body.get("title")); post.setContent(body.get("content"));
+        post.setFileUrl(body.get("fileUrl")); post.setFileName(body.get("fileName"));
+        int affected = boardMapper.updateByIdAndEmpno(post);
+        return affected > 0
+                ? ResponseEntity.ok(Map.of("result", "ok"))
+                : ResponseEntity.status(403).body(Map.of("message", "수정 권한이 없습니다."));
+    }
+
+    // ── 부서게시판 글 수정 (본인만) ──────────────────────────
+    @PutMapping("/dept/{id}")
+    public ResponseEntity<?> deptUpdate(
+            @PathVariable long id,
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        Integer empno = empno(auth);
+        if (empno == null) return ResponseEntity.status(401).build();
+        BoardPost post = new BoardPost();
+        post.setPostId(id); post.setEmpno(empno);
+        post.setTitle(body.get("title")); post.setContent(body.get("content"));
+        post.setFileUrl(body.get("fileUrl")); post.setFileName(body.get("fileName"));
+        int affected = boardMapper.updateByIdAndEmpno(post);
+        return affected > 0
+                ? ResponseEntity.ok(Map.of("result", "ok"))
+                : ResponseEntity.status(403).body(Map.of("message", "수정 권한이 없습니다."));
+    }
+
+    // ── 관리자: 전체 게시글 목록 ──────────────────────────────
+    @GetMapping("/admin")
+    public ResponseEntity<List<BoardPost>> adminList(Authentication auth) {
+        if (!isAdmin(auth)) return ResponseEntity.status(403).build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(boardMapper.findAll());
+    }
+
+    // ── 관리자: 게시글 삭제 (본인 무관) ──────────────────────
+    @DeleteMapping("/admin/{id}")
+    public ResponseEntity<?> adminDelete(
+            @PathVariable long id,
+            Authentication auth) {
+        if (!isAdmin(auth)) return ResponseEntity.status(403).build();
+        boardMapper.deleteById(id);
+        return ResponseEntity.ok(Map.of("result", "ok"));
+    }
+
+    private boolean isAdmin(Authentication auth) {
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
     // ── 댓글 목록 ────────────────────────────────────────────
     @GetMapping("/comments")
     public ResponseEntity<List<BoardComment>> commentList(@RequestParam long postId) {
