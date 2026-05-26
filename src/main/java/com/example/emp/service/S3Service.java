@@ -75,6 +75,25 @@ public class S3Service {
         return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
     }
 
+    // 게시판 첨부파일 업로드 (board/emp-{empno}/{timestamp}_{safeFilename})
+    public String uploadBoardFile(Integer empno, MultipartFile file) throws IOException {
+        String original     = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
+        String safeFilename = original.replaceAll("[^a-zA-Z0-9._\\-]", "_");
+        String key          = "board/emp-" + empno + "/" + System.currentTimeMillis() + "_" + safeFilename;
+        String encodedName  = URLEncoder.encode(original, StandardCharsets.UTF_8).replace("+", "%20");
+        String contentDisp  = "attachment; filename=\"" + safeFilename + "\"; filename*=UTF-8''" + encodedName;
+
+        s3Client.putObject(
+                PutObjectRequest.builder()
+                        .bucket(bucket).key(key)
+                        .contentType(file.getContentType() != null ? file.getContentType() : "application/octet-stream")
+                        .contentDisposition(contentDisp)
+                        .build(),
+                RequestBody.fromInputStream(file.getInputStream(), file.getSize())
+        );
+        return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
+    }
+
     // 채팅 첨부파일 업로드 (chat/emp-{empno}/{timestamp}_{safeFilename})
     public String uploadChatFile(Integer empno, MultipartFile file) throws IOException {
         String original    = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";

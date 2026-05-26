@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.emp.mapper.BoardMapper">
+
+    <resultMap id="BoardMap" type="com.example.emp.model.BoardPost">
+        <id     property="postId"     column="POST_ID"/>
+        <result property="deptno"     column="DEPTNO"/>
+        <result property="empno"      column="EMPNO"/>
+        <result property="authorName" column="AUTHOR_NAME"/>
+        <result property="title"      column="TITLE"/>
+        <result property="content"    column="CONTENT"/>
+        <result property="fileUrl"    column="FILE_URL"/>
+        <result property="fileName"   column="FILE_NAME"/>
+        <result property="createdAt"  column="CREATED_AT"/>
+    </resultMap>
+
+    <!-- 전체게시판 글 저장 (DEPTNO = NULL) -->
+    <insert id="insertGlobal" parameterType="com.example.emp.model.BoardPost">
+        INSERT INTO BOARD (POST_ID, EMPNO, AUTHOR_NAME, TITLE, CONTENT, FILE_URL, FILE_NAME, CREATED_AT)
+        VALUES (BOARD_SEQ.NEXTVAL, #{empno}, #{authorName}, #{title}, #{content}, #{fileUrl}, #{fileName}, SYSDATE + 9/24)
+    </insert>
+
+    <!-- 부서게시판 글 저장 (DEPTNO 포함) -->
+    <insert id="insertDept" parameterType="com.example.emp.model.BoardPost">
+        INSERT INTO BOARD (POST_ID, DEPTNO, EMPNO, AUTHOR_NAME, TITLE, CONTENT, FILE_URL, FILE_NAME, CREATED_AT)
+        VALUES (BOARD_SEQ.NEXTVAL, #{deptno}, #{empno}, #{authorName}, #{title}, #{content}, #{fileUrl}, #{fileName}, SYSDATE + 9/24)
+    </insert>
+
+    <!-- 전체게시판 목록 (DEPTNO IS NULL, 최신순) -->
+    <select id="findGlobal" resultMap="BoardMap">
+        SELECT POST_ID, EMPNO, DEPTNO, AUTHOR_NAME, TITLE, CONTENT, FILE_URL, FILE_NAME,
+               TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI') AS CREATED_AT
+        FROM BOARD
+        WHERE DEPTNO IS NULL
+        ORDER BY POST_ID DESC
+    </select>
+
+    <!-- 부서게시판 목록 (DEPTNO = ?, 최신순) -->
+    <select id="findByDept" resultMap="BoardMap">
+        SELECT POST_ID, EMPNO, DEPTNO, AUTHOR_NAME, TITLE, CONTENT, FILE_URL, FILE_NAME,
+               TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI') AS CREATED_AT
+        FROM BOARD
+        WHERE DEPTNO = #{deptno}
+        ORDER BY POST_ID DESC
+    </select>
+
+    <!-- 단건 조회 -->
+    <select id="findById" resultMap="BoardMap">
+        SELECT POST_ID, EMPNO, DEPTNO, AUTHOR_NAME, TITLE, CONTENT, FILE_URL, FILE_NAME,
+               TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI') AS CREATED_AT
+        FROM BOARD
+        WHERE POST_ID = #{postId}
+    </select>
+
+    <!-- 본인 글만 삭제 (EMPNO 일치 확인) -->
+    <delete id="deleteByIdAndEmpno">
+        DELETE FROM BOARD WHERE POST_ID = #{postId} AND EMPNO = #{empno}
+    </delete>
+
+</mapper>
