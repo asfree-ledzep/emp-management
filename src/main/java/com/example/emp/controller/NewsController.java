@@ -74,8 +74,10 @@ public class NewsController {
             HttpResponse<String> resp =
                     client.send(request, HttpResponse.BodyHandlers.ofString());
 
+            // Naver API 오류는 항상 HTTP 200으로 감싸서 반환
+            // (4xx를 그대로 전달하면 클라이언트가 JWT 인증 에러로 혼동함)
             if (resp.statusCode() == 401 || resp.statusCode() == 403) {
-                return ResponseEntity.status(resp.statusCode()).body(Map.of(
+                return ResponseEntity.ok(Map.of(
                         "error",   "API_FORBIDDEN",
                         "message", "네이버 API 인증 실패 — Client ID/Secret 확인 필요"
                 ));
