@@ -47,9 +47,14 @@ public class ExpenseService {
         log.info("[OCR] 영수증 분석 시작 - empno: {}, 파일: {}, 크기: {} bytes",
                 empno, file.getOriginalFilename(), file.getSize());
 
-        // 1. S3 업로드
-        String receiptUrl = s3Service.uploadReceipt(empno, file);
-        log.info("[OCR] S3 업로드 완료: {}", receiptUrl);
+        // 1. S3 업로드 (실패해도 OCR 계속 진행)
+        String receiptUrl = null;
+        try {
+            receiptUrl = s3Service.uploadReceipt(empno, file);
+            log.info("[OCR] S3 업로드 완료: {}", receiptUrl);
+        } catch (Exception s3ex) {
+            log.warn("[OCR] S3 업로드 실패 (OCR은 계속 진행): {}", s3ex.getMessage());
+        }
 
         // 2. Base64 변환
         String base64 = Base64.getEncoder().encodeToString(file.getBytes());
