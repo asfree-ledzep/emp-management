@@ -68,8 +68,12 @@ public class ExpenseController {
     // 3. 내 지출 목록
     @GetMapping("/my")
     public ResponseEntity<?> getMyExpenses(Authentication auth) {
-        Integer empno = Integer.parseInt(auth.getName());
-        return ResponseEntity.ok(expenseService.findByEmpno(empno));
+        try {
+            Integer empno = Integer.parseInt(auth.getName());
+            return ResponseEntity.ok(expenseService.findByEmpno(empno));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.ok(List.of()); // 관리자: 빈 목록
+        }
     }
 
     // ─── 관리자 전용 ───

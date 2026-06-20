@@ -1,0 +1,20 @@
+# 빌드 산출물
+target/
+deploy.zip
+
+# Maven 래퍼
+mvnw
+mvnw.cmd
+.mvn/
+
+# IDE
+.settings/
+.classpath
+.factorypath
+.project
+
+# AWS/EB 설정 (코드 분석 불필요)
+.elasticbeanstalk/
+.ebextensions/
+.platform/
+.github/

@@ -119,6 +119,25 @@ public class S3Service {
         return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
     }
 
+    // 쪽지 첨부파일 업로드 (msg/emp-{empno}/{timestamp}_{safeFilename})
+    public String uploadMsgFile(Integer empno, MultipartFile file) throws IOException {
+        String original     = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
+        String safeFilename = original.replaceAll("[^a-zA-Z0-9._\\-]", "_");
+        String key          = "msg/emp-" + empno + "/" + System.currentTimeMillis() + "_" + safeFilename;
+        String encodedName  = URLEncoder.encode(original, StandardCharsets.UTF_8).replace("+", "%20");
+        String contentDisp  = "attachment; filename=\"" + safeFilename + "\"; filename*=UTF-8''" + encodedName;
+
+        s3Client.putObject(
+                PutObjectRequest.builder()
+                        .bucket(bucket).key(key)
+                        .contentType(file.getContentType() != null ? file.getContentType() : "application/octet-stream")
+                        .contentDisposition(contentDisp)
+                        .build(),
+                RequestBody.fromInputStream(file.getInputStream(), file.getSize())
+        );
+        return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
+    }
+
     // S3 사진 삭제 (URL에서 키 추출)
     public void deletePhoto(String photoUrl) {
         try {

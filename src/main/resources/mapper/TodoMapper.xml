@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.TodoMapper">
+
+    <resultMap id="todoRM" type="com.example.emp.model.Todo">
+        <id     property="todoId"    column="TODO_ID"/>
+        <result property="empno"     column="EMPNO"/>
+        <result property="content"   column="CONTENT"/>
+        <result property="isDone"    column="IS_DONE"/>
+        <result property="priority"  column="PRIORITY"/>
+        <result property="dueDate"   column="DUE_DATE"/>
+        <result property="sortOrder" column="SORT_ORDER"/>
+        <result property="createdAt" column="CREATED_AT"/>
+        <result property="updatedAt" column="UPDATED_AT"/>
+    </resultMap>
+
+    <select id="findByEmpno" resultMap="todoRM">
+        SELECT * FROM TODO
+        WHERE EMPNO = #{empno}
+        ORDER BY IS_DONE ASC, SORT_ORDER ASC, CREATED_AT DESC
+    </select>
+
+    <select id="findById" resultMap="todoRM">
+        SELECT * FROM TODO WHERE TODO_ID = #{todoId} AND EMPNO = #{empno}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TODO (TODO_ID, EMPNO, CONTENT, IS_DONE, PRIORITY, DUE_DATE, SORT_ORDER, CREATED_AT, UPDATED_AT)
+        VALUES (#{todoId}, #{empno}, #{content}, 0,
+                #{priority, jdbcType=VARCHAR},
+                #{dueDate, jdbcType=DATE},
+                #{sortOrder}, SYSDATE, SYSDATE)
+    </insert>
+
+    <update id="update">
+        UPDATE TODO SET
+            CONTENT    = #{content},
+            PRIORITY   = #{priority, jdbcType=VARCHAR},
+            DUE_DATE   = #{dueDate, jdbcType=DATE},
+            UPDATED_AT = SYSDATE
+        WHERE TODO_ID = #{todoId} AND EMPNO = #{empno}
+    </update>
+
+    <update id="toggle">
+        UPDATE TODO SET
+            IS_DONE    = CASE WHEN IS_DONE = 1 THEN 0 ELSE 1 END,
+            UPDATED_AT = SYSDATE
+        WHERE TODO_ID = #{todoId} AND EMPNO = #{empno}
+    </update>
+
+    <update id="updateOrder">
+        UPDATE TODO SET SORT_ORDER = #{sortOrder} WHERE TODO_ID = #{todoId}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM TODO WHERE TODO_ID = #{todoId} AND EMPNO = #{empno}
+    </delete>
+
+    <select id="nextVal" resultType="long">
+        SELECT TODO_SEQ.NEXTVAL FROM DUAL
+    </select>
+
+</mapper>

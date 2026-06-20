@@ -13,6 +13,7 @@
         <result property="sal"      column="SAL"/>
         <result property="comm"     column="COMM"/>
         <result property="deptno"   column="DEPTNO"/>
+        <result property="dname"    column="DNAME"/>
         <result property="photoUrl" column="PHOTO_URL"/>
     </resultMap>
 
@@ -23,9 +24,10 @@
     </select>
 
     <select id="findById" parameterType="int" resultMap="empResultMap">
-        SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO, PHOTO_URL
-          FROM EMP
-         WHERE EMPNO = #{empno}
+        SELECT E.EMPNO, E.ENAME, E.JOB, E.MGR, E.HIREDATE, E.SAL, E.COMM,
+               E.DEPTNO, E.PHOTO_URL, D.DNAME
+          FROM EMP E LEFT JOIN DEPT D ON E.DEPTNO = D.DEPTNO
+         WHERE E.EMPNO = #{empno}
     </select>
 
     <insert id="insert" parameterType="Emp">

@@ -21,5 +21,6 @@ public class Emp {
     private Double  sal;      // 급여
     private Double  comm;     // 커미션
     private Integer deptno;   // 부서번호
+    private String  dname;    // 부서명 (JOIN)
     private String  photoUrl; // 프로필 사진 S3 URL
 }

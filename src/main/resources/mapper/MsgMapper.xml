@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.emp.mapper.MsgMapper">
+
+    <!-- ══ ResultMap ══════════════════════════════════════ -->
+    <resultMap id="MsgMap" type="com.example.emp.model.MsgMessage">
+        <id     property="msgId"          column="MSG_ID"/>
+        <result property="senderEmpno"    column="SENDER_EMPNO"/>
+        <result property="receiverEmpno"  column="RECEIVER_EMPNO"/>
+        <result property="senderName"     column="SENDER_NAME"/>
+        <result property="receiverName"   column="RECEIVER_NAME"/>
+        <result property="senderPhoto"    column="SENDER_PHOTO"/>
+        <result property="receiverPhoto"  column="RECEIVER_PHOTO"/>
+        <result property="title"          column="TITLE"/>
+        <result property="content"        column="CONTENT"/>
+        <result property="sentAt"         column="SENT_AT"/>
+        <result property="readAt"         column="READ_AT"/>
+        <result property="senderDeleted"  column="SENDER_DELETED"
+                typeHandler="org.apache.ibatis.type.BooleanTypeHandler"/>
+        <result property="recvDeleted"    column="RECV_DELETED"
+                typeHandler="org.apache.ibatis.type.BooleanTypeHandler"/>
+        <result property="parentMsgId"    column="PARENT_MSG_ID"/>
+        <result property="fileCount"      column="FILE_COUNT"/>
+    </resultMap>
+
+    <resultMap id="FileMap" type="com.example.emp.model.MsgFile">
+        <id     property="fileId"      column="FILE_ID"/>
+        <result property="msgId"       column="MSG_ID"/>
+        <result property="fileName"    column="FILE_NAME"/>
+        <result property="s3Url"       column="S3_URL"/>
+        <result property="fileSize"    column="FILE_SIZE"/>
+        <result property="contentType" column="CONTENT_TYPE"/>
+    </resultMap>
+
+    <!-- ══ 쪽지 저장 ══════════════════════════════════════ -->
+    <insert id="insertMsg" parameterType="com.example.emp.model.MsgMessage"
+            useGeneratedKeys="false">
+        INSERT INTO MSG (MSG_ID, SENDER_EMPNO, RECEIVER_EMPNO, TITLE, CONTENT,
+                         SENT_AT, PARENT_MSG_ID)
+        VALUES (MSG_SEQ.NEXTVAL, #{senderEmpno}, #{receiverEmpno},
+                #{title}, #{content},
+                SYSDATE + 9/24,
+                #{parentMsgId})
+    </insert>
+
+    <!-- 마지막 INSERT 된 MSG_ID 조회 후 model에 세팅 -->
+    <select id="lastMsgId" resultType="long">
+        SELECT MSG_SEQ.CURRVAL FROM DUAL
+    </select>
+
+    <!-- ══ 첨부파일 저장 ══════════════════════════════════ -->
+    <insert id="insertFile" parameterType="com.example.emp.model.MsgFile">
+        INSERT INTO MSG_FILE (FILE_ID, MSG_ID, FILE_NAME, S3_URL, FILE_SIZE, CONTENT_TYPE)
+        VALUES (MSG_FILE_SEQ.NEXTVAL, #{msgId}, #{fileName}, #{s3Url},
+                #{fileSize}, #{contentType})
+    </insert>
+
+    <!-- ══ 받은 쪽지 목록 ════════════════════════════════ -->
+    <select id="findInbox" resultMap="MsgMap">
+        SELECT m.MSG_ID, m.SENDER_EMPNO, m.RECEIVER_EMPNO,
+               s.ENAME  AS SENDER_NAME,
+               r.ENAME  AS RECEIVER_NAME,
+               s.PHOTO_URL AS SENDER_PHOTO,
+               r.PHOTO_URL AS RECEIVER_PHOTO,
+               m.TITLE,
+               DBMS_LOB.SUBSTR(m.CONTENT, 100, 1) AS CONTENT,
+               TO_CHAR(m.SENT_AT, 'YYYY-MM-DD HH24:MI') AS SENT_AT,
+               TO_CHAR(m.READ_AT, 'YYYY-MM-DD HH24:MI') AS READ_AT,
+               m.SENDER_DELETED, m.RECV_DELETED, m.PARENT_MSG_ID,
+               (SELECT COUNT(*) FROM MSG_FILE f WHERE f.MSG_ID = m.MSG_ID) AS FILE_COUNT
+        FROM MSG m
+        LEFT JOIN EMP s ON s.EMPNO = m.SENDER_EMPNO
+        LEFT JOIN EMP r ON r.EMPNO = m.RECEIVER_EMPNO
+        WHERE m.RECEIVER_EMPNO = #{empno}
+          AND m.RECV_DELETED   = 0
+        ORDER BY m.MSG_ID DESC
+    </select>
+
+    <!-- ══ 보낸 쪽지 목록 ════════════════════════════════ -->
+    <select id="findSent" resultMap="MsgMap">
+        SELECT m.MSG_ID, m.SENDER_EMPNO, m.RECEIVER_EMPNO,
+               s.ENAME  AS SENDER_NAME,
+               r.ENAME  AS RECEIVER_NAME,
+               s.PHOTO_URL AS SENDER_PHOTO,
+               r.PHOTO_URL AS RECEIVER_PHOTO,
+               m.TITLE,
+               DBMS_LOB.SUBSTR(m.CONTENT, 100, 1) AS CONTENT,
+               TO_CHAR(m.SENT_AT, 'YYYY-MM-DD HH24:MI') AS SENT_AT,
+               TO_CHAR(m.READ_AT, 'YYYY-MM-DD HH24:MI') AS READ_AT,
+               m.SENDER_DELETED, m.RECV_DELETED, m.PARENT_MSG_ID,
+               (SELECT COUNT(*) FROM MSG_FILE f WHERE f.MSG_ID = m.MSG_ID) AS FILE_COUNT
+        FROM MSG m
+        LEFT JOIN EMP s ON s.EMPNO = m.SENDER_EMPNO
+        LEFT JOIN EMP r ON r.EMPNO = m.RECEIVER_EMPNO
+        WHERE m.SENDER_EMPNO    = #{empno}
+          AND m.SENDER_DELETED  = 0
+        ORDER BY m.MSG_ID DESC
+    </select>
+
+    <!-- ══ 쪽지 상세 ══════════════════════════════════════ -->
+    <select id="findById" resultMap="MsgMap">
+        SELECT m.MSG_ID, m.SENDER_EMPNO, m.RECEIVER_EMPNO,
+               s.ENAME  AS SENDER_NAME,
+               r.ENAME  AS RECEIVER_NAME,
+               s.PHOTO_URL AS SENDER_PHOTO,
+               r.PHOTO_URL AS RECEIVER_PHOTO,
+               m.TITLE,
+               m.CONTENT,
+               TO_CHAR(m.SENT_AT, 'YYYY-MM-DD HH24:MI') AS SENT_AT,
+               TO_CHAR(m.READ_AT, 'YYYY-MM-DD HH24:MI') AS READ_AT,
+               m.SENDER_DELETED, m.RECV_DELETED, m.PARENT_MSG_ID,
+               (SELECT COUNT(*) FROM MSG_FILE f WHERE f.MSG_ID = m.MSG_ID) AS FILE_COUNT
+        FROM MSG m
+        LEFT JOIN EMP s ON s.EMPNO = m.SENDER_EMPNO
+        LEFT JOIN EMP r ON r.EMPNO = m.RECEIVER_EMPNO
+        WHERE m.MSG_ID = #{msgId}
+    </select>
+
+    <!-- ══ 첨부파일 목록 ══════════════════════════════════ -->
+    <select id="findFiles" resultMap="FileMap">
+        SELECT FILE_ID, MSG_ID, FILE_NAME, S3_URL, FILE_SIZE, CONTENT_TYPE
+        FROM MSG_FILE
+        WHERE MSG_ID = #{msgId}
+        ORDER BY FILE_ID
+    </select>
+
+    <!-- ══ 읽음 처리 (수신자가 열었을 때) ════════════════ -->
+    <update id="markRead">
+        UPDATE MSG
+           SET READ_AT = SYSDATE + 9/24
+         WHERE MSG_ID        = #{msgId}
+           AND RECEIVER_EMPNO = #{empno}
+           AND READ_AT IS NULL
+    </update>
+
+    <!-- ══ 소프트 삭제 ════════════════════════════════════ -->
+    <update id="softDeleteByReceiver">
+        UPDATE MSG SET RECV_DELETED = 1
+         WHERE MSG_ID = #{msgId} AND RECEIVER_EMPNO = #{empno}
+    </update>
+    <update id="softDeleteBySender">
+        UPDATE MSG SET SENDER_DELETED = 1
+         WHERE MSG_ID = #{msgId} AND SENDER_EMPNO = #{empno}
+    </update>
+
+    <!-- ══ 미읽음 수 ══════════════════════════════════════ -->
+    <select id="countUnread" resultType="int">
+        SELECT COUNT(*)
+          FROM MSG
+         WHERE RECEIVER_EMPNO = #{empno}
+           AND RECV_DELETED   = 0
+           AND READ_AT IS NULL
+    </select>
+
+    <!-- ══ (미사용: EmpMapper 재사용 권장) ════════════════ -->
+    <select id="findRecipientList" resultMap="MsgMap">
+        SELECT 0 AS MSG_ID, EMPNO AS SENDER_EMPNO, ENAME AS SENDER_NAME FROM EMP
+    </select>
+
+</mapper>

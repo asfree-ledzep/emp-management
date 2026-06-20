@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.emp.mapper.WorkLogMapper">
+
+    <resultMap id="workLogRM" type="com.example.emp.model.WorkLog">
+        <id     property="logId"       column="LOG_ID"/>
+        <result property="empno"       column="EMPNO"/>
+        <result property="ename"       column="ENAME"/>
+        <result property="deptName"    column="DNAME"/>
+        <result property="job"         column="JOB"/>
+        <result property="logDate"     column="LOG_DATE"/>
+        <result property="title"       column="TITLE"/>
+        <result property="content"     column="CONTENT"/>
+        <result property="status"      column="STATUS"/>
+        <result property="mgrEmpno"    column="MGR_EMPNO"/>
+        <result property="mgrEname"    column="MGR_ENAME"/>
+        <result property="mgrComment"  column="MGR_COMMENT"/>
+        <result property="mgrAt"       column="MGR_AT"/>
+        <result property="adminComment" column="ADMIN_COMMENT"/>
+        <result property="adminAt"     column="ADMIN_AT"/>
+        <result property="rejectReason" column="REJECT_REASON"/>
+        <result property="rejectedBy"  column="REJECTED_BY"/>
+        <result property="createdAt"   column="CREATED_AT"/>
+        <result property="updatedAt"   column="UPDATED_AT"/>
+    </resultMap>
+
+    <!-- 공통 SELECT -->
+    <sql id="selectBase">
+        SELECT WL.*,
+               E.ENAME,
+               D.DNAME,
+               E.JOB,
+               ME.ENAME AS MGR_ENAME
+        FROM WORK_LOG WL
+        LEFT JOIN EMP  E  ON WL.EMPNO    = E.EMPNO
+        LEFT JOIN DEPT D  ON E.DEPTNO    = D.DEPTNO
+        LEFT JOIN EMP  ME ON WL.MGR_EMPNO = ME.EMPNO
+    </sql>
+
+    <!-- 단건 -->
+    <select id="findById" resultMap="workLogRM">
+        <include refid="selectBase"/>
+        WHERE WL.LOG_ID = #{logId}
+    </select>
+
+    <!-- 사원 본인 -->
+    <select id="findByEmpno" resultMap="workLogRM">
+        <include refid="selectBase"/>
+        WHERE WL.EMPNO = #{empno}
+        ORDER BY WL.LOG_DATE DESC, WL.CREATED_AT DESC
+    </select>
+
+    <!-- 팀장: 결재 대기 -->
+    <select id="findPendingForMgr" resultMap="workLogRM">
+        <include refid="selectBase"/>
+        WHERE WL.MGR_EMPNO = #{mgrEmpno}
+          AND WL.STATUS = 'SUBMITTED'
+        ORDER BY WL.CREATED_AT ASC
+    </select>
+
+    <!-- 팀장: 팀원 전체 -->
+    <select id="findAllForMgr" resultMap="workLogRM">
+        <include refid="selectBase"/>
+        WHERE WL.MGR_EMPNO = #{mgrEmpno}
+        ORDER BY WL.LOG_DATE DESC, WL.CREATED_AT DESC
+    </select>
+
+    <!-- 관리자: 확인 대기 -->
+    <select id="findPendingForAdmin" resultMap="workLogRM">
+        <include refid="selectBase"/>
+        WHERE WL.STATUS = 'MGR_APPROVED'
+        ORDER BY WL.MGR_AT ASC
+    </select>
+
+    <!-- 관리자: 전체 -->
+    <select id="findAll" resultMap="workLogRM">
+        <include refid="selectBase"/>
+        ORDER BY WL.LOG_DATE DESC, WL.CREATED_AT DESC
+    </select>
+
+    <!-- 삽입 -->
+    <insert id="insert">
+        INSERT INTO WORK_LOG
+            (LOG_ID, EMPNO, LOG_DATE, TITLE, CONTENT, STATUS, MGR_EMPNO, CREATED_AT, UPDATED_AT)
+        VALUES
+            (#{logId}, #{empno}, #{logDate}, #{title}, #{content}, #{status}, #{mgrEmpno}, SYSDATE, SYSDATE)
+    </insert>
+
+    <!-- 내용 수정 (DRAFT / MGR_REJECTED / ADMIN_REJECTED) -->
+    <update id="update">
+        UPDATE WORK_LOG SET
+            LOG_DATE   = #{logDate},
+            TITLE      = #{title},
+            CONTENT    = #{content},
+            STATUS     = #{status},
+            UPDATED_AT = SYSDATE
+        WHERE LOG_ID = #{logId} AND EMPNO = #{empno}
+    </update>
+
+    <!-- 상태 변경 -->
+    <update id="updateStatus">
+        UPDATE WORK_LOG SET
+            STATUS        = #{status},
+            REJECT_REASON = #{rejectReason},
+            REJECTED_BY   = #{rejectedBy},
+            MGR_COMMENT   = CASE WHEN #{mgrComment} IS NOT NULL THEN #{mgrComment} ELSE MGR_COMMENT END,
+            ADMIN_COMMENT = CASE WHEN #{adminComment} IS NOT NULL THEN #{adminComment} ELSE ADMIN_COMMENT END,
+            UPDATED_AT    = SYSDATE
+        WHERE LOG_ID = #{logId}
+    </update>
+
+    <!-- 팀장 처리 시각 -->
+    <update id="setMgrAt">
+        UPDATE WORK_LOG SET MGR_AT = SYSDATE WHERE LOG_ID = #{logId}
+    </update>
+
+    <!-- 관리자 처리 시각 -->
+    <update id="setAdminAt">
+        UPDATE WORK_LOG SET ADMIN_AT = SYSDATE WHERE LOG_ID = #{logId}
+    </update>
+
+    <!-- 삭제 (DRAFT만) -->
+    <delete id="delete">
+        DELETE FROM WORK_LOG WHERE LOG_ID = #{logId}
+    </delete>
+
+    <!-- 시퀀스 -->
+    <select id="nextVal" resultType="long">
+        SELECT WORK_LOG_SEQ.NEXTVAL FROM DUAL
+    </select>
+
+</mapper>

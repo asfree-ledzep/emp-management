@@ -30,6 +30,8 @@ public class LeaveController {
             Integer empno = Integer.parseInt(auth.getName());
             LeaveBalance bal = leaveService.getBalance(empno);
             return ResponseEntity.ok(bal);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.ok(Map.of("remainDays", 0)); // 관리자: 0
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
@@ -41,6 +43,8 @@ public class LeaveController {
         try {
             Integer empno = Integer.parseInt(auth.getName());
             return ResponseEntity.ok(leaveService.getMyLeaves(empno));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.ok(java.util.List.of()); // 관리자: 빈 목록
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
