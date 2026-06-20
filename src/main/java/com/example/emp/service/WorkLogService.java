@@ -25,6 +25,7 @@ public class WorkLogService {
         req.setEmpno(empno);
         req.setMgrEmpno(emp.getMgr());
         req.setStatus("DRAFT");
+        if (req.getLogDate() == null) req.setLogDate(java.time.LocalDate.now());
         workLogMapper.insert(req);
         return workLogMapper.findById(id);
     }
