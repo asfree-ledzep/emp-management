@@ -346,6 +346,10 @@ public class ExpenseService {
     // CRUD
     // ─────────────────────────────────────────
     public void create(Expense expense) {
+        // 날짜 null 시 오늘 날짜로 자동 설정
+        if (expense.getExpenseDate() == null || expense.getExpenseDate().isBlank()) {
+            expense.setExpenseDate(java.time.LocalDate.now().toString());
+        }
         // OCR 해시 세팅 (제출 시 ocrRaw가 있으면 해시 계산)
         if (expense.getOcrHash() == null && expense.getOcrRaw() != null) {
             expense.setOcrHash(computeOcrHash(expense.getOcrRaw()));
