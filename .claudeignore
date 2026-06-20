@@ -13,8 +13,16 @@ mvnw.cmd
 .factorypath
 .project
 
-# AWS/EB 설정 (코드 분석 불필요)
+# AWS/EB 배포 설정
 .elasticbeanstalk/
 .ebextensions/
 .platform/
 .github/
+.ebignore
+Procfile
+
+# 테스트 코드 (분석 불필요)
+src/test/
+
+# 초기화 SQL 데이터 (대용량)
+src/main/resources/sql/
