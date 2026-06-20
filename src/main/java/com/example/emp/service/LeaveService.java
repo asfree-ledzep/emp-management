@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
@@ -38,6 +39,11 @@ public class LeaveService {
     // ── 사원: 연차 신청 ──
     @Transactional
     public void apply(Integer empno, LeaveRequest req) {
+        // days 미전송 시 startDate~endDate로 자동 계산
+        if (req.getDays() == null) {
+            long d = ChronoUnit.DAYS.between(req.getStartDate(), req.getEndDate()) + 1;
+            req.setDays((double) d);
+        }
         // 잔여 연차 확인
         LeaveBalance bal = getBalance(empno);
         if (req.getDays() > bal.getRemaining()) {
