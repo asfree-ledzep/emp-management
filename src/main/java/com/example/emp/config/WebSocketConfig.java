@@ -26,10 +26,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // 웹 (SockJS 폴백)
         registry.addEndpoint("/ws")
-                // Vercel(HTTPS) + 로컬(HTTP) 모두 허용
                 .setAllowedOriginPatterns("*")
-                // SockJS 폴백: xhr-polling 등으로 WebSocket 미지원 환경 대응
                 .withSockJS();
+        // 모바일 앱 전용 — 순수 WebSocket (SockJS 불필요)
+        registry.addEndpoint("/ws-native")
+                .setAllowedOriginPatterns("*");
     }
 }

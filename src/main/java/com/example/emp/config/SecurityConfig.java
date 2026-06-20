@@ -33,6 +33,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/holidays/month").permitAll()
                         // WebSocket 핸드셰이크 + SockJS 폴백 경로 허용
                         .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/ws-native/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 // 미인증 요청: 기본 403 대신 401 반환 → 프론트 자동 로그아웃 트리거
