@@ -14,6 +14,7 @@
         <result property="comm"     column="COMM"/>
         <result property="deptno"   column="DEPTNO"/>
         <result property="dname"    column="DNAME"/>
+        <result property="mgrEname" column="MGR_ENAME"/>
         <result property="photoUrl" column="PHOTO_URL"/>
     </resultMap>
 
@@ -25,8 +26,10 @@
 
     <select id="findById" parameterType="int" resultMap="empResultMap">
         SELECT E.EMPNO, E.ENAME, E.JOB, E.MGR, E.HIREDATE, E.SAL, E.COMM,
-               E.DEPTNO, E.PHOTO_URL, D.DNAME
-          FROM EMP E LEFT JOIN DEPT D ON E.DEPTNO = D.DEPTNO
+               E.DEPTNO, E.PHOTO_URL, D.DNAME, M.ENAME AS MGR_ENAME
+          FROM EMP E
+          LEFT JOIN DEPT D ON E.DEPTNO = D.DEPTNO
+          LEFT JOIN EMP  M ON E.MGR    = M.EMPNO
          WHERE E.EMPNO = #{empno}
     </select>
 

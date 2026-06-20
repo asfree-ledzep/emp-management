@@ -17,6 +17,7 @@ public class Emp {
     private String  ename;    // 이름
     private String  job;      // 직책
     private Integer mgr;      // 상사 사번
+    private String  mgrEname; // 상사 이름 (JOIN)
     private LocalDate hiredate; // 입사일
     private Double  sal;      // 급여
     private Double  comm;     // 커미션
