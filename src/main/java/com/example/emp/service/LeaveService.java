@@ -41,9 +41,15 @@ public class LeaveService {
     public void apply(Integer empno, LeaveRequest req) {
         // days 미전송 시 startDate~endDate로 자동 계산
         if (req.getDays() == null) {
-            long d = ChronoUnit.DAYS.between(req.getStartDate(), req.getEndDate()) + 1;
-            req.setDays((double) d);
+            if (req.getStartDate() != null && req.getEndDate() != null) {
+                long d = ChronoUnit.DAYS.between(req.getStartDate(), req.getEndDate()) + 1;
+                req.setDays(d > 0 ? (double) d : 1.0);
+            } else {
+                req.setDays(1.0);
+            }
         }
+        // leaveType 기본값
+        if (req.getLeaveType() == null) req.setLeaveType("연차");
         // 잔여 연차 확인
         LeaveBalance bal = getBalance(empno);
         if (req.getDays() > bal.getRemaining()) {
