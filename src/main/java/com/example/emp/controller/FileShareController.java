@@ -110,6 +110,21 @@ public class FileShareController {
         return ResponseEntity.ok(Map.of("result", "ok"));
     }
 
+    // ── Pre-signed 다운로드 URL 발급 ──
+    @GetMapping("/{id}/download-url")
+    public ResponseEntity<?> getDownloadUrl(@PathVariable Long id, Authentication auth) {
+        FileShare fs = fileShareService.findById(id);
+        if (fs == null) return ResponseEntity.notFound().build();
+        if ("DEPT".equals(fs.getScope()) && !isAdmin(auth)) {
+            Integer empno = Integer.parseInt(auth.getName());
+            Emp emp = empMapper.findById(empno);
+            if (emp == null || !fs.getDeptno().equals(emp.getDeptno()))
+                return ResponseEntity.status(403).body(Map.of("error", "접근 권한이 없습니다."));
+        }
+        String url = fileShareService.generatePresignedUrl(fs.getR2Key(), fs.getFileName());
+        return ResponseEntity.ok(Map.of("url", url));
+    }
+
     // ── 파일 다운로드 (서버 스트리밍) ──
     @GetMapping("/{id}/download")
     public void download(@PathVariable Long id, HttpServletResponse response,

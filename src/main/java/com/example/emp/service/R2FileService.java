@@ -13,10 +13,15 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 /**
  * Cloudflare R2 파일 스토리지 서비스 (AWS SDK v2, S3-호환 API 사용)
@@ -37,6 +42,7 @@ public class R2FileService {
     private String bucket;
 
     private S3Client client;
+    private S3Presigner presigner;
     private boolean ready = false;
 
     @PostConstruct
@@ -44,19 +50,24 @@ public class R2FileService {
         if (accountId == null || accountId.isBlank() ||
             accessKey == null || accessKey.isBlank() ||
             secretKey == null || secretKey.isBlank()) {
-            // R2 자격증명 미설정 시 기능 비활성화 (서버 시작은 정상)
             return;
         }
-        // R2는 path-style URL 필수: https://<account>.r2.cloudflarestorage.com/<bucket>/key
+        var endpoint    = URI.create("https://" + accountId + ".r2.cloudflarestorage.com");
+        var region      = Region.of("auto");
+        var credentials = StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(accessKey, secretKey));
+        var s3Config = S3Configuration.builder().pathStyleAccessEnabled(true).build();
+
         client = S3Client.builder()
-                .endpointOverride(URI.create("https://" + accountId + ".r2.cloudflarestorage.com"))
-                .region(Region.of("auto"))
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(accessKey, secretKey)))
-                .serviceConfiguration(S3Configuration.builder()
-                        .pathStyleAccessEnabled(true)
-                        .build())
-                .build();
+                .endpointOverride(endpoint).region(region)
+                .credentialsProvider(credentials)
+                .serviceConfiguration(s3Config).build();
+
+        presigner = S3Presigner.builder()
+                .endpointOverride(endpoint).region(region)
+                .credentialsProvider(credentials)
+                .serviceConfiguration(s3Config).build();
+
         ready = true;
     }
 
@@ -83,6 +94,20 @@ public class R2FileService {
                 .bucket(bucket).key(key).build())) {
             is.transferTo(out);
         }
+    }
+
+    /** Pre-signed 다운로드 URL 생성 (10분 유효) */
+    public String generatePresignedUrl(String key, String fileName) {
+        checkReady();
+        String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        var getReq = GetObjectRequest.builder()
+                .bucket(bucket).key(key)
+                .responseContentDisposition("attachment; filename*=UTF-8''" + encoded)
+                .build();
+        var presignReq = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(10))
+                .getObjectRequest(getReq).build();
+        return presigner.presignGetObject(presignReq).url().toString();
     }
 
     /** 파일 삭제 */

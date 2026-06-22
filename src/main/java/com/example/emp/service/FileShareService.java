@@ -54,6 +54,10 @@ public class FileShareService {
         r2.streamTo(fs.getR2Key(), out);
     }
 
+    public String generatePresignedUrl(String r2Key, String fileName) {
+        return r2.generatePresignedUrl(r2Key, fileName);
+    }
+
     // ── 목록 조회 ──
     public List<FileShare> findByScope(String scope, Long folderId) {
         return mapper.findByScope(scope, folderId);
