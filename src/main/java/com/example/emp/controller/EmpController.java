@@ -37,9 +37,10 @@ public class EmpController {
 
     /** 로그인된 사원의 사번 (USER 역할일 때만 유효) */
     private Integer loginEmpno() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return null;
         try {
-            return Integer.parseInt(
-                    SecurityContextHolder.getContext().getAuthentication().getName());
+            return Integer.parseInt(auth.getName());
         } catch (NumberFormatException e) {
             return null;
         }

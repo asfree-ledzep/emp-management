@@ -40,13 +40,17 @@
 
     <update id="update" parameterType="Emp">
         UPDATE EMP
-           SET ENAME    = #{ename,jdbcType=VARCHAR},
-               JOB      = #{job,jdbcType=VARCHAR},
-               MGR      = #{mgr,jdbcType=INTEGER},
-               HIREDATE = #{hiredate,jdbcType=DATE},
-               SAL      = #{sal,jdbcType=DECIMAL},
-               COMM     = #{comm,jdbcType=DECIMAL},
-               DEPTNO   = #{deptno,jdbcType=INTEGER}
+        <set>
+            ENAME  = #{ename,jdbcType=VARCHAR},
+            JOB    = #{job,jdbcType=VARCHAR},
+            MGR    = #{mgr,jdbcType=INTEGER},
+            <if test="hiredate != null">
+            HIREDATE = #{hiredate,jdbcType=DATE},
+            </if>
+            SAL    = #{sal,jdbcType=DECIMAL},
+            COMM   = #{comm,jdbcType=DECIMAL},
+            DEPTNO = #{deptno,jdbcType=INTEGER}
+        </set>
          WHERE EMPNO = #{empno}
     </update>
 
