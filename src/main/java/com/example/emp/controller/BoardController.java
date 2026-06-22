@@ -41,11 +41,11 @@ public class BoardController {
     @Autowired private BoardCommentMapper commentMapper;
     @Autowired private S3Service          s3Service;
 
-    /* ── 공통: 현재 사용자 empno 추출 ── */
+    /* ── 공통: 현재 사용자 empno 추출 (admin → 0) ── */
     private Integer empno(Authentication auth) {
         if (auth == null) return null;
         try { return Integer.parseInt(auth.getName()); }
-        catch (NumberFormatException e) { return null; }
+        catch (NumberFormatException e) { return 0; } // admin 계정
     }
 
     /* ── 공통: 현재 사용자 이름 추출 ── */
