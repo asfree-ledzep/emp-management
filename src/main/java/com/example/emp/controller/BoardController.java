@@ -268,19 +268,26 @@ public class BoardController {
         try {
             URI uri = new URI(url);
             if (!uri.getPath().contains("/board/")) return ResponseEntity.badRequest().build();
-            try (InputStream in = uri.toURL().openStream()) {
-                byte[] data    = in.readAllBytes();
+
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) uri.toURL().openConnection();
+            conn.connect();
+            byte[] data;
+            try (InputStream in = conn.getInputStream()) { data = in.readAllBytes(); }
+
+            // S3 객체에 저장된 Content-Disposition(원본 파일명) 우선 사용
+            String cd = conn.getHeaderField("Content-Disposition");
+            if (cd == null || cd.isBlank()) {
                 String path    = uri.getPath();
                 String rawName = path.substring(path.lastIndexOf('/') + 1);
                 String fileName = rawName.contains("_") ? rawName.substring(rawName.indexOf('_') + 1) : rawName;
                 String encoded  = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
-                return ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_DISPOSITION,
-                                "attachment; filename=\"" + fileName + "\"; filename*=UTF-8''" + encoded)
-                        .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                        .header(HttpHeaders.CONTENT_TYPE, "application/octet-stream")
-                        .body(data);
+                cd = "attachment; filename=\"" + fileName + "\"; filename*=UTF-8''" + encoded;
             }
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, cd)
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .header(HttpHeaders.CONTENT_TYPE, "application/octet-stream")
+                    .body(data);
         } catch (Exception e) {
             return ResponseEntity.status(500).build();
         }
