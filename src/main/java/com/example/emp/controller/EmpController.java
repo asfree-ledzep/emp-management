@@ -6,6 +6,8 @@ import com.example.emp.service.EmpAddrService;
 import com.example.emp.service.EmpService;
 import com.example.emp.service.ExcelService;
 import com.example.emp.service.S3Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
@@ -22,6 +24,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/emps")
 public class EmpController {
+
+    private static final Logger log = LoggerFactory.getLogger(EmpController.class);
 
     @Autowired private EmpService     empService;
     @Autowired private S3Service      s3Service;
@@ -93,14 +97,20 @@ public class EmpController {
 
     // ── 수정: 관리자 or 본인 ────────────────────────────────────
     @PutMapping("/{empno}")
-    public ResponseEntity<Void> update(@PathVariable Integer empno,
+    public ResponseEntity<?> update(@PathVariable Integer empno,
                                        @RequestBody Emp emp) {
         if (!isAdmin() && !empno.equals(loginEmpno())) {
             return ResponseEntity.status(403).build();
         }
         emp.setEmpno(empno);
-        empService.update(emp);
-        return ResponseEntity.ok().build();
+        try {
+            empService.update(emp);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("[EMP update] empno={} hiredate={} sal={} comm={} error={}",
+                    empno, emp.getHiredate(), emp.getSal(), emp.getComm(), e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
     }
 
     // ── 삭제: 관리자만 ─────────────────────────────────────────
