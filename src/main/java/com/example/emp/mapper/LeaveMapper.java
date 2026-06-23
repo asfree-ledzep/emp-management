@@ -39,7 +39,7 @@ public interface LeaveMapper {
     List<LeaveBalance> findAllBalances(@Param("year") int year);
 
     /* ── ADMIN: 최종 승인/반려 ── */
-    void updateAdminDecision(LeaveRequest req);
+    int updateAdminDecision(LeaveRequest req);
 
     /* ── ADMIN: 최종 승인 시 used_days 증가 ── */
     void increaseUsedDays(@Param("empno") Integer empno, @Param("year") int year, @Param("days") Double days);

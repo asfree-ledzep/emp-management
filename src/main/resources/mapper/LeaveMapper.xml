@@ -149,7 +149,7 @@
             ADMIN_COMMENT = #{adminComment},
             ADMIN_AT      = SYSDATE
         WHERE LEAVE_ID = #{leaveId}
-          AND STATUS   = 'MGR_APPROVED'
+          AND STATUS   IN ('PENDING', 'MGR_APPROVED')
     </update>
 
     <!-- ── 사용 연차 증가 ── -->

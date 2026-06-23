@@ -97,7 +97,8 @@ public class LeaveService {
         if (req == null) throw new IllegalArgumentException("신청 내역이 없습니다.");
         req.setStatus("APPROVED");
         req.setAdminComment(comment);
-        leaveMapper.updateAdminDecision(req);
+        int rows = leaveMapper.updateAdminDecision(req);
+        if (rows == 0) throw new IllegalArgumentException("이미 처리된 신청이거나 승인할 수 없는 상태입니다.");
         // 사용 연차 차감
         int year = req.getStartDate().getYear();
         // LEAVE_BALANCE 행 없으면 초기화
@@ -113,7 +114,8 @@ public class LeaveService {
         if (req == null) throw new IllegalArgumentException("신청 내역이 없습니다.");
         req.setStatus("REJECTED");
         req.setAdminComment(comment);
-        leaveMapper.updateAdminDecision(req);
+        int rows = leaveMapper.updateAdminDecision(req);
+        if (rows == 0) throw new IllegalArgumentException("이미 처리된 신청이거나 반려할 수 없는 상태입니다.");
         // 이미 APPROVED가 되어 차감된 적 없으므로 복구 불필요
         // (MGR_APPROVED → REJECTED)
     }
