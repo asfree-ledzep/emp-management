@@ -24,7 +24,11 @@
 
     <insert id="insert" parameterType="com.example.emp.model.Dept">
         INSERT INTO DEPT (DEPTNO, DNAME, LOC)
-        VALUES (#{deptno}, #{dname}, #{loc})
+        VALUES (
+            NVL((SELECT MAX(DEPTNO) FROM DEPT), 0) + 10,
+            #{dname},
+            #{loc}
+        )
     </insert>
 
     <update id="update" parameterType="com.example.emp.model.Dept">
