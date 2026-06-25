@@ -57,6 +57,25 @@ public class EmpController {
         return ResponseEntity.ok(empService.getAll());
     }
 
+    // ── 조직도용 목록: 인증된 모든 사용자 (급여 제외 기본 정보) ──
+    @GetMapping("/org-chart")
+    public ResponseEntity<?> getOrgChart() {
+        return ResponseEntity.ok(
+            empService.getAll().stream()
+                .map(e -> {
+                    java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("empno",    e.getEmpno());
+                    m.put("ename",    e.getEname()    != null ? e.getEname()    : "");
+                    m.put("job",      e.getJob()      != null ? e.getJob()      : "");
+                    m.put("deptno",   e.getDeptno());
+                    m.put("mgr",      e.getMgr());
+                    m.put("photoUrl", e.getPhotoUrl() != null ? e.getPhotoUrl() : "");
+                    return m;
+                })
+                .toList()
+        );
+    }
+
     // ── 상사 선택용 목록: 인증된 모든 사용자 (사번·이름·직책만 반환) ──
     @GetMapping("/mgr-list")
     public ResponseEntity<?> getMgrList() {
